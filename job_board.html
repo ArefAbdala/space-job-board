@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Space Jobs | Stoke Space, SpaceX, Relativity & Rocket Lab</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0c10;
+      --surface: #13161d;
+      --border: #1f2430;
+      --text: #e8eaf0;
+      --muted: #6b7280;
+      --accent: #f05a28;
+      --pill-bg: #1a1e28;
+      --card-bg: #13161d;
+      --card-hover: #181c27;
+      --stoke-color: #f05a28;
+      --spacex-color: #4d9fff;
+      --relativity-color: #a259ff;
+      --rocketlab-color: #e8c84a;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 20px 32px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .logo-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo {
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .logo-stoke { color: var(--stoke-color); }
+    .logo-spacex { color: var(--spacex-color); }
+    .logo-relativity { color: var(--relativity-color); }
+    .logo-rocketlab  { color: var(--rocketlab-color); }
+
+    .logo-sep {
+      font-size: 0.9rem;
+      color: var(--border);
+    }
+
+    .header-divider {
+      width: 1px;
+      height: 20px;
+      background: var(--border);
+    }
+
+    .header-title {
+      font-size: 1rem;
+      font-weight: 400;
+      color: var(--muted);
+      letter-spacing: 0.04em;
+    }
+
+    /* ── Filters ── */
+    .filters {
+      padding: 24px 32px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .filter-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .filter-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      min-width: 72px;
+      padding-top: 7px;
+    }
+
+    .pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .pill {
+      padding: 5px 14px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: var(--pill-bg);
+      color: var(--muted);
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+      user-select: none;
+    }
+
+    .pill:hover { color: var(--text); }
+
+    .pill.active {
+      color: #fff;
+      font-weight: 600;
+    }
+
+    /* Company pills use per-company color */
+    .pill[data-company="all"].active,
+    .pill[data-loc="all"].active {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .pill[data-company="Stoke Space"].active {
+      background: var(--stoke-color);
+      border-color: var(--stoke-color);
+    }
+
+    .pill[data-company="SpaceX"].active {
+      background: var(--spacex-color);
+      border-color: var(--spacex-color);
+    }
+
+    .pill[data-company="Relativity"].active {
+      background: var(--relativity-color);
+      border-color: var(--relativity-color);
+    }
+
+    .pill[data-company="Rocket Lab"].active {
+      background: var(--rocketlab-color);
+      border-color: var(--rocketlab-color);
+      color: #0a0c10;
+    }
+
+    .pill[data-loc]:not([data-loc="all"]).active {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .pill:hover:not(.active) {
+      border-color: var(--muted);
+    }
+
+    .search-input {
+      flex: 1;
+      max-width: 420px;
+      padding: 6px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 0.875rem;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .search-input::placeholder { color: var(--muted); }
+    .search-input:focus { border-color: var(--accent); }
+
+    /* ── Main ── */
+    main { padding: 28px 32px; }
+
+    .results-bar {
+      font-size: 0.875rem;
+      color: var(--muted);
+      margin-bottom: 20px;
+    }
+
+    .results-bar strong { color: var(--text); }
+
+    /* ── Job grid ── */
+    .job-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .job-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      transition: background 0.15s, border-color 0.15s, transform 0.1s;
+      border-top: 2px solid transparent;
+    }
+
+    .job-card.stoke { border-top-color: var(--stoke-color); }
+    .job-card.spacex { border-top-color: var(--spacex-color); }
+    .job-card.relativity { border-top-color: var(--relativity-color); }
+    .job-card.rocketlab  { border-top-color: var(--rocketlab-color); }
+
+    .job-card:hover {
+      background: var(--card-hover);
+      transform: translateY(-2px);
+    }
+
+    .job-card.stoke:hover { border-color: rgba(240, 90, 40, 0.5); border-top-color: var(--stoke-color); }
+    .job-card.spacex:hover { border-color: rgba(77, 159, 255, 0.5); border-top-color: var(--spacex-color); }
+    .job-card.relativity:hover { border-color: rgba(162, 89, 255, 0.5); border-top-color: var(--relativity-color); }
+    .job-card.rocketlab:hover  { border-color: rgba(232, 200, 74, 0.5);  border-top-color: var(--rocketlab-color); }
+
+    .card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .job-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text);
+      line-height: 1.35;
+    }
+
+    .company-badge {
+      flex-shrink: 0;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      padding: 2px 7px;
+      border-radius: 4px;
+      margin-top: 2px;
+    }
+
+    .company-badge.stoke {
+      background: rgba(240, 90, 40, 0.15);
+      color: var(--stoke-color);
+    }
+
+    .company-badge.spacex {
+      background: rgba(77, 159, 255, 0.12);
+      color: var(--spacex-color);
+    }
+
+    .company-badge.relativity {
+      background: rgba(162, 89, 255, 0.12);
+      color: var(--relativity-color);
+    }
+
+    .company-badge.rocketlab {
+      background: rgba(232, 200, 74, 0.12);
+      color: var(--rocketlab-color);
+    }
+
+    .job-location {
+      font-size: 0.8rem;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .job-location::before {
+      content: "◎";
+      font-size: 0.65rem;
+    }
+
+    .job-card.stoke .job-location::before { color: var(--stoke-color); }
+    .job-card.spacex .job-location::before { color: var(--spacex-color); }
+    .job-card.relativity .job-location::before { color: var(--relativity-color); }
+    .job-card.rocketlab  .job-location::before { color: var(--rocketlab-color); }
+
+    .job-dates {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .job-published {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 5px;
+      width: fit-content;
+    }
+
+    .job-card.stoke  .job-published { background: rgba(240, 90, 40, 0.12);  color: var(--stoke-color); }
+    .job-card.spacex .job-published { background: rgba(77, 159, 255, 0.12); color: var(--spacex-color); }
+    .job-card.relativity .job-published { background: rgba(162, 89, 255, 0.12); color: var(--relativity-color); }
+
+    .job-updated {
+      font-size: 0.72rem;
+      color: var(--muted);
+      padding-left: 2px;
+    }
+
+    .time-ago {
+      font-weight: 400;
+      opacity: 0.7;
+      white-space: nowrap;
+    }
+
+    .job-card-footer {
+      margin-top: auto;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+    }
+
+    .view-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: gap 0.15s;
+    }
+
+    .job-card.stoke .view-btn { color: var(--stoke-color); }
+    .job-card.spacex .view-btn { color: var(--spacex-color); }
+    .job-card.relativity .view-btn { color: var(--relativity-color); }
+    .job-card.rocketlab  .view-btn { color: var(--rocketlab-color); }
+
+    .view-btn:hover { gap: 10px; }
+
+    /* ── State messages ── */
+    .state-msg {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .state-msg .icon {
+      font-size: 2.5rem;
+      margin-bottom: 12px;
+      display: block;
+    }
+
+    .spinner {
+      width: 36px;
+      height: 36px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin: 0 auto 16px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Responsive ── */
+    @media (max-width: 600px) {
+      header, .filters, main { padding-left: 16px; padding-right: 16px; }
+      .filter-row { flex-direction: column; gap: 8px; }
+      .filter-label { padding-top: 0; }
+      .search-input { max-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo-group">
+    <span class="logo logo-stoke">Stoke Space</span>
+    <span class="logo-sep">&</span>
+    <span class="logo logo-spacex">SpaceX</span>
+    <span class="logo-sep">&</span>
+    <span class="logo logo-relativity">Relativity</span>
+    <span class="logo-sep">&</span>
+    <span class="logo logo-rocketlab">Rocket Lab</span>
+  </div>
+  <div class="header-divider"></div>
+  <div class="header-title">Job Board</div>
+</header>
+
+<section class="filters">
+  <div class="filter-row">
+    <div class="filter-label">Company</div>
+    <div class="pills" id="company-pills">
+      <button class="pill active" data-company="all">All</button>
+      <button class="pill" data-company="Stoke Space">Stoke Space</button>
+      <button class="pill" data-company="SpaceX">SpaceX</button>
+      <button class="pill" data-company="Relativity">Relativity</button>
+      <button class="pill" data-company="Rocket Lab">Rocket Lab</button>
+    </div>
+  </div>
+  <div class="filter-row">
+    <div class="filter-label">Location</div>
+    <div class="pills" id="location-pills">
+      <button class="pill active" data-loc="all">All</button>
+    </div>
+  </div>
+  <div class="filter-row">
+    <div class="filter-label">Keywords</div>
+    <input
+      class="search-input"
+      id="keyword-input"
+      type="search"
+      placeholder="type job title or skill..."
+      autocomplete="off"
+    >
+  </div>
+</section>
+
+<main>
+  <div class="results-bar" id="results-bar"></div>
+  <div id="job-container">
+    <div class="state-msg">
+      <div class="spinner"></div>
+      Loading jobs from Greenhouse…
+    </div>
+  </div>
+</main>
+
+<script>
+  const SOURCES = [
+    { name: 'Stoke Space', slug: 'stokespacetechnologies', cls: 'stoke' },
+    { name: 'SpaceX',      slug: 'spacex',                 cls: 'spacex' },
+    { name: 'Relativity', slug: 'relativity',             cls: 'relativity' },
+    { name: 'Rocket Lab', slug: 'rocketlab',              cls: 'rocketlab' },
+  ];
+
+  let allJobs = [];
+  let activeCompanies = new Set(); // empty = all
+  let activeLocations = new Set(); // empty = all
+
+  /* ── Fetch ── */
+  async function loadJobs() {
+    try {
+      const results = await Promise.all(
+        SOURCES.map(s =>
+          fetch(`https://boards-api.greenhouse.io/v1/boards/${s.slug}/jobs`)
+            .then(r => { if (!r.ok) throw new Error(`${s.name}: HTTP ${r.status}`); return r.json(); })
+            .then(d => (d.jobs || []).map(j => ({ ...j, _company: s.name, _cls: s.cls })))
+        )
+      );
+      allJobs = results.flat().sort((a, b) =>
+        new Date(b.first_published || 0) - new Date(a.first_published || 0)
+      );
+      buildLocationPills();
+      render();
+    } catch (err) {
+      document.getElementById('job-container').innerHTML = `
+        <div class="state-msg">
+          <span class="icon">⚠</span>
+          Failed to load jobs: ${err.message}<br>
+          <small>Check your connection or try refreshing.</small>
+        </div>`;
+    }
+  }
+
+  /* ── Location pills ── */
+  function extractLocations(jobs) {
+    const locs = new Set();
+    for (const job of jobs) {
+      (job.location?.name || '').split(';').forEach(l => {
+        const t = l.trim();
+        if (t) locs.add(t);
+      });
+    }
+    return [...locs].sort();
+  }
+
+  function buildLocationPills() {
+    const container = document.getElementById('location-pills');
+    extractLocations(allJobs).forEach(loc => {
+      const btn = document.createElement('button');
+      btn.className = 'pill';
+      btn.dataset.loc = loc;
+      btn.textContent = loc;
+      btn.addEventListener('click', () => toggleSet(activeLocations, loc, btn, 'loc'));
+      container.appendChild(btn);
+    });
+    document.querySelector('[data-loc="all"]').addEventListener('click', () => resetFilter('loc'));
+  }
+
+  /* ── Company pills (wired on DOM load) ── */
+  document.querySelectorAll('[data-company]:not([data-company="all"])').forEach(btn => {
+    btn.addEventListener('click', () => toggleSet(activeCompanies, btn.dataset.company, btn, 'company'));
+  });
+  document.querySelector('[data-company="all"]').addEventListener('click', () => resetFilter('company'));
+
+  /* ── Generic toggle / reset ── */
+  function toggleSet(set, value, btn, type) {
+    if (set.has(value)) {
+      set.delete(value);
+      btn.classList.remove('active');
+    } else {
+      set.add(value);
+      btn.classList.add('active');
+    }
+    document.querySelector(`[data-${type}="all"]`).classList.toggle('active', set.size === 0);
+    render();
+  }
+
+  function resetFilter(type) {
+    const set = type === 'company' ? activeCompanies : activeLocations;
+    set.clear();
+    document.querySelectorAll(`[data-${type}]`).forEach(p => p.classList.remove('active'));
+    document.querySelector(`[data-${type}="all"]`).classList.add('active');
+    render();
+  }
+
+  /* ── Filter & render ── */
+  function filterJobs() {
+    const keyword = document.getElementById('keyword-input').value.trim().toLowerCase();
+
+    return allJobs.filter(job => {
+      if (activeCompanies.size > 0 && !activeCompanies.has(job._company)) return false;
+
+      if (activeLocations.size > 0) {
+        const parts = (job.location?.name || '').split(';').map(l => l.trim());
+        const match = [...activeLocations].some(al =>
+          parts.some(p => p.toLowerCase().includes(al.toLowerCase()))
+        );
+        if (!match) return false;
+      }
+
+      if (keyword) {
+        if (!(job.title || '').toLowerCase().includes(keyword)) return false;
+      }
+
+      return true;
+    });
+  }
+
+  function formatDate(iso) {
+    if (!iso) return '';
+    return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
+  function timeAgo(iso) {
+    if (!iso) return '';
+    const sec = Math.floor((Date.now() - new Date(iso)) / 1000);
+    if (sec < 60)              return 'just now';
+    if (sec < 3600)            return `${Math.floor(sec / 60)} minute${Math.floor(sec / 60) !== 1 ? 's' : ''} ago`;
+    if (sec < 86400)           return `${Math.floor(sec / 3600)} hour${Math.floor(sec / 3600) !== 1 ? 's' : ''} ago`;
+    if (sec < 86400 * 30)      return `${Math.floor(sec / 86400)} day${Math.floor(sec / 86400) !== 1 ? 's' : ''} ago`;
+    if (sec < 86400 * 365)     return `${Math.floor(sec / (86400 * 30))} month${Math.floor(sec / (86400 * 30)) !== 1 ? 's' : ''} ago`;
+    return `${Math.floor(sec / (86400 * 365))} year${Math.floor(sec / (86400 * 365)) !== 1 ? 's' : ''} ago`;
+  }
+
+  function sameDay(isoA, isoB) {
+    if (!isoA || !isoB) return false;
+    return isoA.slice(0, 10) === isoB.slice(0, 10);
+  }
+
+  function renderDates(job) {
+    const pub = job.first_published;
+    const upd = job.updated_at;
+    if (sameDay(pub, upd)) {
+      return `<div class="job-published">⬡ Published and last updated ${formatDate(pub)} <span class="time-ago">(${timeAgo(pub)})</span></div>`;
+    }
+    return `
+      <div class="job-published">⬡ Published ${formatDate(pub)} <span class="time-ago">(${timeAgo(pub)})</span></div>
+      <div class="job-updated">Updated ${formatDate(upd)} <span class="time-ago">(${timeAgo(upd)})</span></div>`;
+  }
+
+  function render() {
+    const filtered = filterJobs();
+    const container = document.getElementById('job-container');
+    const bar = document.getElementById('results-bar');
+
+    // Breakdown by company
+    const counts = {};
+    SOURCES.forEach(s => counts[s.name] = 0);
+    filtered.forEach(j => { if (counts[j._company] !== undefined) counts[j._company]++; });
+    const breakdown = SOURCES.map(s => `${counts[s.name]} ${s.name}`).join(' · ');
+
+    bar.innerHTML = `<strong>${filtered.length}</strong> job${filtered.length !== 1 ? 's' : ''} &nbsp;<span style="opacity:.5">|</span>&nbsp; ${breakdown}`;
+
+    if (filtered.length === 0) {
+      container.innerHTML = `
+        <div class="state-msg">
+          <span class="icon">🔭</span>
+          No jobs match your filters.
+        </div>`;
+      return;
+    }
+
+    const grid = document.createElement('div');
+    grid.className = 'job-grid';
+
+    for (const job of filtered) {
+      const card = document.createElement('div');
+      card.className = `job-card ${job._cls}`;
+      card.innerHTML = `
+        <div class="card-header">
+          <div class="job-title">${escHtml(job.title)}</div>
+          <span class="company-badge ${job._cls}">${escHtml(job._company)}</span>
+        </div>
+        <div class="job-location">${escHtml(job.location?.name || 'Location TBD')}</div>
+        <div class="job-dates">${renderDates(job)}</div>
+        <div class="job-card-footer">
+          <a class="view-btn" href="${escHtml(job.absolute_url)}" target="_blank" rel="noopener">
+            View Job &rarr;
+          </a>
+        </div>`;
+      grid.appendChild(card);
+    }
+
+    container.innerHTML = '';
+    container.appendChild(grid);
+  }
+
+  function escHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  /* ── Debounced search ── */
+  let debounceTimer;
+  document.getElementById('keyword-input').addEventListener('input', () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(render, 200);
+  });
+
+  loadJobs();
+</script>
+</body>
+</html>
