@@ -1,0 +1,80 @@
+2026-03-07 01:54:16,162  INFO      ==================================================
+2026-03-07 01:54:16,162  INFO      Stoke Space Job Monitor — run started
+2026-03-07 01:54:16,162  INFO      ==================================================
+2026-03-07 01:54:16,162  INFO      Trying Greenhouse API: https://boards-api.greenhouse.io/v1/boards/stokespace/jobs
+2026-03-07 01:54:16,704  WARNING   HTTP 404 on attempt 1/3 for https://boards-api.greenhouse.io/v1/boards/stokespace/jobs
+2026-03-07 01:54:16,704  WARNING   Greenhouse API unavailable, falling back to HTML scraper
+2026-03-07 01:54:16,704  INFO      Falling back to HTML scrape: https://www.stokespace.com/careers/current-openings/
+2026-03-07 01:54:17,009  WARNING   HTML scrape found 0 jobs — page structure may have changed
+2026-03-07 01:54:17,012  INFO      Summary: 0 total jobs, 0 new, 0 matching criteria
+2026-03-07 01:54:17,012  INFO      No new matching jobs this run.
+2026-03-07 06:54:17 UTC  status=OK  total_jobs=0  new_jobs=0  matches=0
+2026-03-07 01:54:17,012  INFO      Run complete.
+
+2026-03-07 01:59:27,165  INFO      ==================================================
+2026-03-07 01:59:27,165  INFO      Stoke Space Job Monitor — run started
+2026-03-07 01:59:27,165  INFO      ==================================================
+2026-03-07 01:59:27,165  INFO      Falling back to HTML scrape: https://www.stokespace.com/careers/current-openings/
+2026-03-07 01:59:27,719  WARNING   HTML scrape found 0 jobs — page structure may have changed
+2026-03-07 01:59:27,720  INFO      Summary: 0 total jobs, 0 new, 0 matching criteria
+2026-03-07 01:59:27,721  INFO      No new matching jobs this run.
+2026-03-07 06:59:27 UTC  status=OK  total_jobs=0  new_jobs=0  matches=0
+2026-03-07 01:59:27,721  INFO      Run complete.
+
+2026-03-07 02:01:04,027  INFO      ==================================================
+2026-03-07 02:01:04,027  INFO      Stoke Space Job Monitor — run started
+2026-03-07 02:01:04,027  INFO      ==================================================
+2026-03-07 02:01:04,027  INFO      Trying Greenhouse API: https://boards-api.greenhouse.io/v1/boards/stokespacetechnologies/jobs
+2026-03-07 02:01:04,294  INFO      API returned 50 jobs
+2026-03-07 02:01:04,295  INFO      Summary: 50 total jobs, 50 new, 26 matching criteria
+2026-03-07 02:01:04,295  ERROR     Unexpected error during run
+Traceback (most recent call last):
+  File "C:\Users\arefa\Desktop\Stoke space scraper\stoke_job_monitor.py", line 398, in main
+    notify(matched)
+    ~~~~~~^^^^^^^^^
+  File "C:\Users\arefa\Desktop\Stoke space scraper\stoke_job_monitor.py", line 358, in notify
+    print(output)
+    ~~~~~^^^^^^^^
+  File "C:\Python314\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\U0001f680' in position 78: character maps to <undefined>
+2026-03-07 07:01:04 UTC  status=ERROR  total_jobs=0  new_jobs=0  matches=0  error='charmap' codec can't encode character '\U0001f680' in position 78: character maps to <undefined>
+2026-03-07 02:01:15,089  INFO      ==================================================
+2026-03-07 02:01:15,089  INFO      Stoke Space Job Monitor — run started
+2026-03-07 02:01:15,089  INFO      ==================================================
+2026-03-07 02:01:15,089  INFO      Trying Greenhouse API: https://boards-api.greenhouse.io/v1/boards/stokespacetechnologies/jobs
+2026-03-07 02:01:15,396  INFO      API returned 50 jobs
+2026-03-07 02:01:15,398  INFO      Summary: 50 total jobs, 0 new, 0 matching criteria
+2026-03-07 02:01:15,398  INFO      No new matching jobs this run.
+2026-03-07 07:01:15 UTC  status=OK  total_jobs=50  new_jobs=0  matches=0
+2026-03-07 02:01:15,398  INFO      Run complete.
+
+2026-03-07 02:03:40,737  INFO      ==================================================
+2026-03-07 02:03:40,737  INFO      Stoke Space Job Monitor — run started
+2026-03-07 02:03:40,737  INFO      ==================================================
+2026-03-07 02:03:40,737  INFO      Trying Greenhouse API: https://boards-api.greenhouse.io/v1/boards/stokespacetechnologies/jobs
+2026-03-07 02:03:40,905  INFO      API returned 50 jobs
+2026-03-07 02:03:40,907  INFO      Summary: 50 total jobs, 50 new, 26 matching criteria
+2026-03-07 02:03:40,907  ERROR     Unexpected error during run
+Traceback (most recent call last):
+  File "C:\Users\arefa\Desktop\Stoke space scraper\stoke_job_monitor.py", line 398, in main
+    notify(matched)
+    ~~~~~~^^^^^^^^^
+  File "C:\Users\arefa\Desktop\Stoke space scraper\stoke_job_monitor.py", line 362, in notify
+    print(output)
+    ~~~~~^^^^^^^^
+  File "C:\Python314\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2192' in position 452: character maps to <undefined>
+2026-03-07 07:03:40 UTC  status=ERROR  total_jobs=0  new_jobs=0  matches=0  error='charmap' codec can't encode character '\u2192' in position 452: character maps to <undefined>
+2026-03-07 02:03:58,509  INFO      ==================================================
+2026-03-07 02:03:58,509  INFO      Stoke Space Job Monitor — run started
+2026-03-07 02:03:58,509  INFO      ==================================================
+2026-03-07 02:03:58,509  INFO      Trying Greenhouse API: https://boards-api.greenhouse.io/v1/boards/stokespacetechnologies/jobs
+2026-03-07 02:03:58,741  INFO      API returned 50 jobs
+2026-03-07 02:03:58,742  INFO      Summary: 50 total jobs, 50 new, 26 matching criteria
+2026-03-07 07:03:58 UTC  status=OK  total_jobs=50  new_jobs=50  matches=26
+2026-03-07 02:03:58,743  INFO      Run complete.
+

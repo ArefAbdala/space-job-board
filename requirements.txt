@@ -1,0 +1,10 @@
+# Stoke Space Job Monitor — Python dependencies
+#
+# The core scraper uses ONLY the Python standard library (urllib, json, re).
+# No third-party packages are required for basic operation.
+#
+# Optional: uncomment these if you want to extend the scraper later:
+# requests>=2.31        # Friendlier HTTP client (replace urllib)
+# beautifulsoup4>=4.12  # More robust HTML parsing fallback
+# selenium>=4.15        # Browser-based scraping if JS rendering is needed
+# playwright>=1.40      # Alternative browser automation
