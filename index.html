@@ -469,12 +469,33 @@
     }
   }
 
+  /* ── Location normalisation ── */
+  function normalizeLocation(loc) {
+    const l = loc.toLowerCase().trim();
+    if (!l) return '';
+    if (l.includes('remote'))                                              return 'Remote';
+    if (l.includes('cape canaveral') || l.includes('kennedy space'))      return 'Cape Canaveral, FL';
+    if (l.includes('merritt island'))                                      return 'Merritt Island, FL';
+    if (l.includes('boca chica') || l.includes('starbase'))               return 'Starbase, TX';
+    if (l.includes('hawthorne'))                                           return 'Hawthorne, CA';
+    if (l.includes('long beach'))                                          return 'Long Beach, CA';
+    if (l.includes('los angeles'))                                         return 'Los Angeles, CA';
+    if (l.includes('vandenberg') || l.includes('lompoc'))                 return 'Vandenberg, CA';
+    if (l.includes('redmond'))                                             return 'Redmond, WA';
+    if (l.includes('seattle'))                                             return 'Seattle, WA';
+    if (l.includes('auburn') && (l.includes('wa') || l.includes('washington'))) return 'Auburn, WA';
+    if (l.includes('kent')   && (l.includes('wa') || l.includes('washington'))) return 'Kent, WA';
+    if (l.includes('wallops') || (l.includes('virginia') && l.includes('island'))) return 'Wallops Island, VA';
+    if (l.includes('new zealand') || l.includes('auckland') || l.includes('christchurch') || l.includes('mahia')) return 'New Zealand';
+    return loc.trim();
+  }
+
   /* ── Location pills ── */
   function extractLocations(jobs) {
     const locs = new Set();
     for (const job of jobs) {
       (job.location?.name || '').split(';').forEach(l => {
-        const t = l.trim();
+        const t = normalizeLocation(l.trim());
         if (t) locs.add(t);
       });
     }
@@ -529,10 +550,8 @@
       if (activeCompanies.size > 0 && !activeCompanies.has(job._company)) return false;
 
       if (activeLocations.size > 0) {
-        const parts = (job.location?.name || '').split(';').map(l => l.trim());
-        const match = [...activeLocations].some(al =>
-          parts.some(p => p.toLowerCase().includes(al.toLowerCase()))
-        );
+        const parts = (job.location?.name || '').split(';').map(l => normalizeLocation(l.trim()));
+        const match = [...activeLocations].some(al => parts.includes(al));
         if (!match) return false;
       }
 
