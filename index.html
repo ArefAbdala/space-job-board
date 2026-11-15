@@ -325,6 +325,17 @@
     }
 
     /* ── Responsive ── */
+    /* Group pills (state-level) get a dashed border when inactive */
+    .pill[data-loc^="~"] { border-style: dashed; }
+
+    .pill-sep {
+      width: 1px;
+      height: 22px;
+      background: var(--border);
+      align-self: center;
+      flex-shrink: 0;
+    }
+
     @media (max-width: 600px) {
       header, .filters, main { padding-left: 16px; padding-right: 16px; }
       .filter-row { flex-direction: column; gap: 6px; }
@@ -616,6 +627,19 @@
   }
 
   // ── Location normalization & pills ────────────────────────────────────────
+
+  // State/region group filters. Sentinel values start with "~" to distinguish
+  // them from individual normalized location strings in activeLocations.
+  const LOC_STATE_GROUPS = [
+    { label: 'California',  sentinel: '~CA',   test: l => /,\s*CA$/.test(l) },
+    { label: 'Texas',       sentinel: '~TX',   test: l => /,\s*TX$/.test(l) },
+    { label: 'Washington',  sentinel: '~WA',   test: l => /,\s*WA$/.test(l) },
+    { label: 'Florida',     sentinel: '~FL',   test: l => /,\s*FL$/.test(l) },
+    { label: 'Colorado',    sentinel: '~CO',   test: l => /,\s*CO$/.test(l) },
+    { label: 'Outside US',  sentinel: '~INTL',
+      test: l => !!(l && !/,\s*[A-Z]{2}$/.test(l) && l !== 'Remote' && l !== 'Washington DC Area') },
+  ];
+
   const LOC_RULES = [
     [/remote/i,                                             'Remote'],
     [/cape canaveral|kennedy space/i,                       'Cape Canaveral, FL'],
@@ -662,6 +686,7 @@
     allBtn.addEventListener('click', () => resetFilter('loc'));
     container.appendChild(allBtn);
 
+    // Collect all normalized individual locations
     const locs = new Set();
     for (const job of allJobs) {
       (job.location || '').split(';').forEach(l => {
@@ -670,6 +695,25 @@
       });
     }
 
+    // State/region group pills — only shown if at least one job matches
+    let addedGroups = 0;
+    for (const grp of LOC_STATE_GROUPS) {
+      if ([...locs].some(l => grp.test(l))) {
+        const btn = makePill(grp.label, { 'data-loc': grp.sentinel });
+        btn.addEventListener('click', () => toggleSet(activeLocations, grp.sentinel, btn, 'loc'));
+        container.appendChild(btn);
+        addedGroups++;
+      }
+    }
+
+    // Visual separator between groups and individual city pills
+    if (addedGroups > 0) {
+      const sep = document.createElement('span');
+      sep.className = 'pill-sep';
+      container.appendChild(sep);
+    }
+
+    // Individual city/location pills
     [...locs].sort((a, b) => {
       const stA = (a.match(/,\s*([A-Z]{2})$/) || [])[1] || '';
       const stB = (b.match(/,\s*([A-Z]{2})$/) || [])[1] || '';
@@ -713,7 +757,14 @@
       }
       if (activeLocations.size > 0) {
         const parts = (job.location || '').split(';').map(l => normalizeLocation(l.trim()));
-        if (![...activeLocations].some(al => parts.includes(al))) return false;
+        const matches = [...activeLocations].some(al => {
+          if (al.startsWith('~')) {
+            const grp = LOC_STATE_GROUPS.find(g => g.sentinel === al);
+            return grp && parts.some(p => grp.test(p));
+          }
+          return parts.includes(al);
+        });
+        if (!matches) return false;
       }
       if (kw) {
         const haystack = `${job.title} ${job.department} ${job.location}`.toLowerCase();
