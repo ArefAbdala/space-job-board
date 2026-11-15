@@ -670,7 +670,16 @@
       });
     }
 
-    [...locs].sort().forEach(loc => {
+    [...locs].sort((a, b) => {
+      const stA = (a.match(/,\s*([A-Z]{2})$/) || [])[1] || '';
+      const stB = (b.match(/,\s*([A-Z]{2})$/) || [])[1] || '';
+      if (a === 'Remote' && b !== 'Remote') return 1;
+      if (b === 'Remote' && a !== 'Remote') return -1;
+      if (stA && !stB) return -1;
+      if (stB && !stA) return 1;
+      if (stA !== stB) return stA.localeCompare(stB);
+      return a.localeCompare(b);
+    }).forEach(loc => {
       const btn = makePill(loc, { 'data-loc': loc });
       btn.addEventListener('click', () => toggleSet(activeLocations, loc, btn, 'loc'));
       container.appendChild(btn);
