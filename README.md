@@ -1,80 +1,89 @@
-# Space Job Board
+# Space Industry Job Board
 
 A two-part project for tracking aerospace job openings:
 
-- **`job_board.html`** — Interactive browser dashboard for Stoke Space, SpaceX, Relativity Space, and Rocket Lab
-- **`stoke_job_monitor.py`** — Headless Python script that monitors Stoke Space's board for new postings matching your criteria and logs alerts
+- **`index.html`** — Multi-company live job board deployed to Cloudflare Pages
+- **`stoke_job_monitor.py`** — Headless Python cron script that alerts on new Stoke Space postings matching your criteria
 
 ---
 
-## job_board.html
+## index.html — Browser Job Board
 
-A single-file, no-dependency web app. Just open it in any browser — no server or install required.
+A single-file, no-dependency web app. Open it in any browser or deploy to any static host.
 
 ### Features
 
-- Fetches live job data directly from the [Greenhouse public API](https://boards-api.greenhouse.io) for all four companies in parallel
-- Filter by **company** (Stoke Space, SpaceX, Relativity, Rocket Lab), **location**, or **keyword** — all filters compose together
-- Jobs sorted by most recently published first
-- Each card shows the job title, location, published date with relative age (e.g. `Published Mar 1, 2026 (6 days ago)`), and last updated date if different
-- Color-coded by company: Stoke Space (orange), SpaceX (blue), Relativity (purple), Rocket Lab (gold)
-- Responsive dark UI — works on desktop and mobile
+- Fetches live job data in parallel from **Greenhouse** (17 companies) and **Lever** (3 companies)
+- **Per-source graceful failure** — if a source fails, the board shows the rest with a warning banner
+- Filter by **company**, **department**, **location**, or **keyword** — all filters compose together
+- **"New" badge** on jobs posted within the last 7 days
+- **Refresh button** with last-updated timestamp
+- Jobs sorted by most recently published
+- Color-coded per company using a dynamic CSS variable system
+- Responsive dark UI
 
-### Usage
-
-Double-click `job_board.html` to open in your browser, or serve it locally:
+### Serving locally
 
 ```bash
 python -m http.server
-# then open http://localhost:8000/job_board.html
+# open http://localhost:8000
 ```
 
-### Companies & API endpoints
+### Companies covered
 
-| Company | Greenhouse slug |
+#### Greenhouse
+| Company | Slug | Status |
+|---|---|---|
+| Stoke Space | `stokespacetechnologies` | Confirmed |
+| SpaceX | `spacex` | Confirmed |
+| Relativity Space | `relativity` | Confirmed |
+| Rocket Lab | `rocketlab` | Confirmed |
+| Inversion Space | `inversionspace` | Confirmed |
+| Varda Space | `vardaspace` | Confirmed |
+| Vast Space | `vast` | Likely |
+| Astranis | `astranis` | Likely |
+| Muon Space | `muonspace` | Likely |
+| Albedo | `albedo` | Likely |
+| True Anomaly | `trueanomaly` | Likely |
+| Ursa Major | `ursamajor` | Likely |
+| AST SpaceMobile | `astspacemobile` | Likely |
+| Anduril | `anduril` | Likely |
+| Voyager Space | `voyagerspace` | Likely |
+| Planet Labs | `planetlabs` | Likely |
+| BlackSky | `blacksky` | Likely |
+
+#### Lever
+| Company | Slug |
 |---|---|
-| Stoke Space | `stokespacetechnologies` |
-| SpaceX | `spacex` |
-| Relativity Space | `relativity` |
-| Rocket Lab | `rocketlab` |
+| Hermeus | `hermeus` |
+| CesiumAstro | `CesiumAstro` |
+| Venus Aerospace | `venusaerospace` |
+
+If a source fails to load (shown in the warning banner), its Greenhouse/Lever slug may have changed. See `Space Companies - Recruiting Platforms.md` to look up the correct slug and update `SOURCES` in `index.html`.
 
 ---
 
-## stoke_job_monitor.py
+## stoke_job_monitor.py — Cron Alert Script
 
-A headless cron script that monitors the Stoke Space Greenhouse board for new job postings matching configurable criteria. Designed to run on a schedule and alert you only when something new appears.
+Monitors Stoke Space's Greenhouse board for new postings matching configurable criteria. Tracks removals too.
+
+### Usage
+
+```bash
+python3 stoke_job_monitor.py                # normal run
+python3 stoke_job_monitor.py --dry-run      # check without updating state files
+python3 stoke_job_monitor.py --reset        # clear seen IDs, re-alert on all current jobs
+```
 
 ### How it works
 
-1. **Greenhouse API** — Queries `boards-api.greenhouse.io/v1/boards/stokespacetechnologies/jobs`
-2. **HTML fallback** — If the API is unavailable, scrapes the careers page directly (no external dependencies)
-3. **Deduplication** — Tracks seen job IDs in `data/seen_job_ids.json` so you're only notified about *new* listings
-4. **Criteria matching** — A job triggers a notification if **any** of these match:
-   - Title contains `"Engineer"`
-   - Location contains `"Cape Canaveral"`
-   - Department contains `"Engineer"`
-5. **Logging** — Every run appended to `data/run_history.log`; matches go to `data/matched_jobs.log`
+1. Queries `boards-api.greenhouse.io/v1/boards/stokespacetechnologies/jobs`
+2. **New jobs** — compares against `data/seen_job_ids.json`; alerts if criteria match
+3. **Removed jobs** — compares against previous run's cache (`data/last_run_ids.json`)
+4. Writes matches and removals to `data/matched_jobs.log`
+5. Optionally POSTs to a webhook
 
-### Setup
-
-```bash
-# No dependencies — uses Python standard library only (3.10+)
-python3 stoke_job_monitor.py
-
-# Check output
-cat data/run_history.log
-cat data/matched_jobs.log
-```
-
-### Cron schedule (every 2 hours)
-
-```cron
-0 */2 * * * cd /path/to/space-job-board && /usr/bin/python3 stoke_job_monitor.py >> data/cron_output.log 2>&1
-```
-
-### Customizing criteria
-
-Edit the `CRITERIA` list near the top of `stoke_job_monitor.py`:
+### Criteria (edit to change)
 
 ```python
 CRITERIA = [
@@ -84,9 +93,29 @@ CRITERIA = [
 ]
 ```
 
-Fields available: `title`, `location`, `department`. Operator: `contains` (case-insensitive).
+A job alerts if **any** criterion matches. Fields: `title`, `location`, `department`.
 
-### Overriding the data directory
+### Webhook notifications
+
+Set `WEBHOOK_URL` env var to receive alerts:
+
+```bash
+# Discord
+WEBHOOK_URL="https://discord.com/api/webhooks/..." python3 stoke_job_monitor.py
+
+# ntfy / Slack / generic (receives JSON payload)
+WEBHOOK_URL="https://ntfy.sh/your-topic" python3 stoke_job_monitor.py
+```
+
+Discord webhooks are auto-detected and formatted as embeds. All others receive a generic JSON payload.
+
+### Cron schedule (every 2 hours)
+
+```cron
+0 */2 * * * cd /path/to/space-job-board && /usr/bin/python3 stoke_job_monitor.py >> data/cron_output.log 2>&1
+```
+
+### Override data directory
 
 ```bash
 STOKE_DATA_DIR=/var/lib/stoke_monitor python3 stoke_job_monitor.py
@@ -98,14 +127,16 @@ STOKE_DATA_DIR=/var/lib/stoke_monitor python3 stoke_job_monitor.py
 
 ```
 space-job-board/
-├── job_board.html          # Browser UI (open directly, no server needed)
-├── stoke_job_monitor.py    # Cron-based Stoke Space job alert script
-├── requirements.txt        # No external dependencies — stdlib only
+├── index.html                              # Browser job board (Cloudflare Pages)
+├── stoke_job_monitor.py                    # Cron alert script
+├── Space Companies.txt                     # 56-company research list
+├── Space Companies - Recruiting Platforms.md  # ATS platform research
 └── data/
-    ├── seen_job_ids.json   # Dedup store (auto-created)
-    ├── matched_jobs.log    # New job alert log
-    ├── run_history.log     # Per-run audit log
-    └── cron_output.log     # Cron stdout/stderr (if using cron)
+    ├── seen_job_ids.json                   # Dedup store (auto-created)
+    ├── last_run_ids.json                   # Previous run job cache (for removal detection)
+    ├── matched_jobs.log                    # New job + removal alert log
+    ├── run_history.log                     # Per-run audit log
+    └── cron_output.log                     # Cron stdout/stderr
 ```
 
 ---
@@ -114,8 +145,8 @@ space-job-board/
 
 | Problem | Fix |
 |---|---|
-| Jobs don't load in browser | Check browser console — likely a network issue or the Greenhouse API is temporarily down |
+| Jobs don't load / source error banner | Check browser console — slug may have changed. Look up correct slug in `Space Companies - Recruiting Platforms.md` and update `SOURCES` in `index.html` |
 | `python3: command not found` | Install Python 3.10+ or use the full path in your cron line |
-| API returns 404 in Python script | Stoke Space may have changed their Greenhouse board slug — the HTML fallback will activate automatically |
-| 0 jobs on HTML scrape | Page structure may have changed — update the regex patterns in `fetch_jobs_via_html()` |
-| Permission denied on `data/` | Ensure the user running the cron job has write access to the project directory |
+| API returns 404 in monitor script | Update `GREENHOUSE_API_URL` slug in `stoke_job_monitor.py` |
+| Want to re-alert on all current jobs | Run `python3 stoke_job_monitor.py --reset` |
+| Test without changing state | Run `python3 stoke_job_monitor.py --dry-run` |
