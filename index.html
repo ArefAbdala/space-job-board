@@ -670,7 +670,7 @@
     [/boulder/i,                                            'Boulder, CO'],
     [/colorado springs/i,                                   'Colorado Springs, CO'],
     [/albuquerque/i,                                        'Albuquerque, NM'],
-    [/washington.*dc|arlington.*va|mclean|reston/i,         'Washington DC Area'],
+    [/washington.*d\.?c\.?|district of columbia|arlington.*va|mclean|reston/i, 'Washington DC Area'],
     [/wallops|virginia.*island/i,                           'Wallops Island, VA'],
     [/new zealand|auckland|christchurch|mahia/i,            'New Zealand'],
   ];
@@ -682,7 +682,8 @@
   }
 
   function isUSLocation(loc) {
-    return /,\s*[A-Z]{2}$/.test(loc) || loc === 'Remote' || loc === 'Washington DC Area';
+    return /,\s*[A-Z]{2}$/.test(loc) || loc === 'Remote' || loc === 'Washington DC Area'
+        || /washington.*d\.?c\.?/i.test(loc) || /district of columbia/i.test(loc);
   }
 
   function buildUSLocationPills() {
