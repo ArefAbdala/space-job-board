@@ -373,10 +373,14 @@
     </div>
   </div>
   <div class="filter-row">
-    <div class="filter-label">Location</div>
-    <div class="pills" id="location-pills">
+    <div class="filter-label">In US</div>
+    <div class="pills" id="us-location-pills">
       <button class="pill active" data-loc="all">All</button>
     </div>
+  </div>
+  <div class="filter-row">
+    <div class="filter-label">Outside US</div>
+    <div class="pills" id="intl-location-pills"></div>
   </div>
   <div class="filter-row">
     <div class="filter-label">Keywords</div>
@@ -521,7 +525,8 @@
     updateSourceCountLabel();
     buildCompanyPills();
     buildDeptPills();
-    buildLocationPills();
+    buildUSLocationPills();
+    buildIntlLocationPills();
     renderSourceErrors();
     setLoading(false);
     render();
@@ -636,8 +641,6 @@
     { label: 'Washington',  sentinel: '~WA',   test: l => /,\s*WA$/.test(l) },
     { label: 'Florida',     sentinel: '~FL',   test: l => /,\s*FL$/.test(l) },
     { label: 'Colorado',    sentinel: '~CO',   test: l => /,\s*CO$/.test(l) },
-    { label: 'Outside US',  sentinel: '~INTL',
-      test: l => !!(l && !/,\s*[A-Z]{2}$/.test(l) && l !== 'Remote' && l !== 'Washington DC Area') },
   ];
 
   const LOC_RULES = [
@@ -678,26 +681,30 @@
     return loc.trim();
   }
 
-  function buildLocationPills() {
-    const container = document.getElementById('location-pills');
+  function isUSLocation(loc) {
+    return /,\s*[A-Z]{2}$/.test(loc) || loc === 'Remote' || loc === 'Washington DC Area';
+  }
+
+  function buildUSLocationPills() {
+    const container = document.getElementById('us-location-pills');
     container.innerHTML = '';
 
     const allBtn = makePill('All', { 'data-loc': 'all' }, true);
     allBtn.addEventListener('click', () => resetFilter('loc'));
     container.appendChild(allBtn);
 
-    // Collect all normalized individual locations
+    // Collect US-only normalized locations
     const locs = new Set();
     for (const job of allJobs) {
       (job.location || '').split(';').forEach(l => {
         const t = normalizeLocation(l.trim());
-        if (t) locs.add(t);
+        if (t && isUSLocation(t)) locs.add(t);
       });
     }
 
-    // State/region group pills — only shown if at least one job matches
+    // State group pills
     let addedGroups = 0;
-    for (const grp of LOC_STATE_GROUPS) {
+    for (const grp of LOC_STATE_GROUPS.filter(g => g.sentinel !== '~INTL')) {
       if ([...locs].some(l => grp.test(l))) {
         const btn = makePill(grp.label, { 'data-loc': grp.sentinel });
         btn.addEventListener('click', () => toggleSet(activeLocations, grp.sentinel, btn, 'loc'));
@@ -706,14 +713,13 @@
       }
     }
 
-    // Visual separator between groups and individual city pills
     if (addedGroups > 0) {
       const sep = document.createElement('span');
       sep.className = 'pill-sep';
       container.appendChild(sep);
     }
 
-    // Individual city/location pills
+    // Individual US city pills
     [...locs].sort((a, b) => {
       const stA = (a.match(/,\s*([A-Z]{2})$/) || [])[1] || '';
       const stB = (b.match(/,\s*([A-Z]{2})$/) || [])[1] || '';
@@ -730,11 +736,36 @@
     });
   }
 
+  function buildIntlLocationPills() {
+    const container = document.getElementById('intl-location-pills');
+    container.innerHTML = '';
+
+    // Collect non-US normalized locations
+    const locs = new Set();
+    for (const job of allJobs) {
+      (job.location || '').split(';').forEach(l => {
+        const t = normalizeLocation(l.trim());
+        if (t && !isUSLocation(t)) locs.add(t);
+      });
+    }
+
+    if (locs.size === 0) {
+      container.innerHTML = '<span style="font-size:0.75rem;color:var(--muted);padding-top:6px">None in current results</span>';
+      return;
+    }
+
+    [...locs].sort((a, b) => a.localeCompare(b)).forEach(loc => {
+      const btn = makePill(loc, { 'data-loc': loc });
+      btn.addEventListener('click', () => toggleSet(activeLocations, loc, btn, 'loc'));
+      container.appendChild(btn);
+    });
+  }
+
   // ── Filter toggle / reset ─────────────────────────────────────────────────
   function toggleSet(set, value, btn, type) {
     if (set.has(value)) { set.delete(value); btn.classList.remove('active'); }
     else                { set.add(value);    btn.classList.add('active'); }
-    document.querySelector(`[data-${type}="all"]`)?.classList.toggle('active', set.size === 0);
+    document.querySelectorAll(`[data-${type}="all"]`).forEach(p => p.classList.toggle('active', set.size === 0));
     render();
   }
 
@@ -742,7 +773,7 @@
     const set = type === 'company' ? activeCompanies : type === 'dept' ? activeDepts : activeLocations;
     set.clear();
     document.querySelectorAll(`[data-${type}]`).forEach(p => p.classList.remove('active'));
-    document.querySelector(`[data-${type}="all"]`)?.classList.add('active');
+    document.querySelectorAll(`[data-${type}="all"]`).forEach(p => p.classList.add('active'));
     render();
   }
 
