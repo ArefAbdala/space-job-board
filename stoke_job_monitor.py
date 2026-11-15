@@ -17,6 +17,12 @@ import logging
 import os
 import sys
 import time
+
+# Ensure UTF-8 output on Windows (cp1252 console can't encode →, etc.)
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 from dataclasses import dataclass, asdict
 from datetime import datetime, timezone
 from pathlib import Path
