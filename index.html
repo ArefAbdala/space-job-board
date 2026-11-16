@@ -770,8 +770,10 @@
       const code = US_STATES[name];
       return code ? `, ${code}` : `, ${name}`;
     });
-    // Bare state name (e.g. "Pennsylvania" → "Pennsylvania, PA" so state-group pills include it)
-    if (US_STATES[s]) return `${s}, ${US_STATES[s]}`;
+    // Bare "US" or "USA" → Remote
+    if (/^(US|USA)$/i.test(s)) return 'Remote';
+    // Bare state name (e.g. "Colorado" from "Colorado, USA") → Remote (not a city, not useful as a pill)
+    if (US_STATES[s]) return 'Remote';
     // Apply LOC_RULES
     for (const [re, label] of LOC_RULES) if (re.test(s)) return label;
     return s;
@@ -780,7 +782,7 @@
   function isUSLocation(loc) {
     if (!loc) return false;
     if (/^remote\s*\(/i.test(loc)) return false;    // Remote (Intl) is not US
-    if (/,\s*[A-Z]{2}$/.test(loc)) return true;    // "City, ST"
+    if (/,\s*[A-Z]{2}\b/.test(loc)) return true;    // "City, ST" or multi-city "City, ST City, ST"
     if (loc === 'Remote' || loc === 'Washington DC Area' || loc === 'Multiple US Sites') return true;
     if (US_STATE_CODES.has(loc)) return true;       // bare 2-letter state code
     if (US_STATES[loc]) return true;                // bare state name (defensive)
