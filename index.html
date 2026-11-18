@@ -517,6 +517,31 @@
     allJobs.sort((a, b) => new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0));
     allJobs.forEach(j => { j.isNew = !!(j.publishedAt && now - new Date(j.publishedAt) < NEW_THRESHOLD_MS); });
 
+    // Pre-compute expensive per-job data once so render() and filterJobs() are cheap
+    allJobs.forEach(j => {
+      j._locParts = splitLocations(j.location).map(l => normalizeLocation(l));
+      const newBadge = j.isNew ? `<span class="new-badge">New</span>` : '';
+      const deptHtml = j.department ? `<div class="job-dept">${escHtml(j.department)}</div>` : '';
+      j._cardInner = `
+        <div class="card-header">
+          <div class="card-header-left">
+            <div class="job-title">${escHtml(j.title)}</div>
+            ${newBadge}
+          </div>
+          <span class="company-badge">${escHtml(j._company)}</span>
+        </div>
+        <div class="job-meta">
+          <div class="job-location">${escHtml(j.location || 'Location TBD')}</div>
+          ${deptHtml}
+        </div>
+        <div class="job-dates">${renderDates(j)}</div>
+        <div class="job-card-footer">
+          <a class="view-btn" href="${escHtml(j.url)}" target="_blank" rel="noopener">
+            View Job &rarr;
+          </a>
+        </div>`;
+    });
+
     lastFetched = new Date();
     clearInterval(lastFetchedInterval);
     lastFetchedInterval = setInterval(updateLastFetchedDisplay, 60000);
@@ -801,10 +826,9 @@
     // Collect US-only normalized locations
     const locs = new Set();
     for (const job of allJobs) {
-      splitLocations(job.location).forEach(l => {
-        const t = normalizeLocation(l);
+      for (const t of job._locParts) {
         if (t && isUSLocation(t)) locs.add(t);
-      });
+      }
     }
 
     // State group pills
@@ -848,10 +872,9 @@
     // Collect non-US normalized locations
     const locs = new Set();
     for (const job of allJobs) {
-      splitLocations(job.location).forEach(l => {
-        const t = normalizeLocation(l);
+      for (const t of job._locParts) {
         if (t && !isUSLocation(t)) locs.add(t);
-      });
+      }
     }
 
     if (locs.size === 0) {
@@ -892,14 +915,14 @@
         if (![...activeDepts].some(d => jobDepts.includes(d))) return false;
       }
       if (activeLocations.size > 0) {
-        const parts = splitLocations(job.location).map(l => normalizeLocation(l));
-        const matches = [...activeLocations].some(al => {
+        const parts = job._locParts;
+        let matches = false;
+        for (const al of activeLocations) {
           if (al.startsWith('~')) {
             const grp = LOC_STATE_GROUPS.find(g => g.sentinel === al);
-            return grp && parts.some(p => grp.test(p));
-          }
-          return parts.includes(al);
-        });
+            if (grp && parts.some(p => grp.test(p))) { matches = true; break; }
+          } else if (parts.includes(al)) { matches = true; break; }
+        }
         if (!matches) return false;
       }
       if (kw) {
@@ -972,29 +995,7 @@
       const card = document.createElement('div');
       card.className = 'job-card';
       card.style.setProperty('--company-color', job._color);
-
-      const newBadge = job.isNew ? `<span class="new-badge">New</span>` : '';
-      const deptHtml = job.department
-        ? `<div class="job-dept">${escHtml(job.department)}</div>` : '';
-
-      card.innerHTML = `
-        <div class="card-header">
-          <div class="card-header-left">
-            <div class="job-title">${escHtml(job.title)}</div>
-            ${newBadge}
-          </div>
-          <span class="company-badge">${escHtml(job._company)}</span>
-        </div>
-        <div class="job-meta">
-          <div class="job-location">${escHtml(job.location || 'Location TBD')}</div>
-          ${deptHtml}
-        </div>
-        <div class="job-dates">${renderDates(job)}</div>
-        <div class="job-card-footer">
-          <a class="view-btn" href="${escHtml(job.url)}" target="_blank" rel="noopener">
-            View Job &rarr;
-          </a>
-        </div>`;
+      card.innerHTML = job._cardInner;
       grid.appendChild(card);
     }
 
