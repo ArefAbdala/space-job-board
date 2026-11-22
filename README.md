@@ -22,6 +22,22 @@ A single-file, no-dependency web app. Open it in any browser or deploy to any st
 - Color-coded per company using a dynamic CSS variable system
 - Responsive dark UI
 
+### Search engines & security
+
+Static files deployed with the board (all at the repo root, which is the Cloudflare Pages output directory):
+
+| File | Purpose |
+|---|---|
+| `app.js`, `styles.css` | Board logic and styles, kept out of `index.html` so a strict CSP can forbid inline scripts |
+| `_headers` | Security headers (CSP, HSTS, nosniff, frame/referrer/permissions policies) and `noindex` for non-site repo files |
+| `robots.txt`, `sitemap.xml` | Crawl rules and sitemap for Google |
+| `404.html` | Real 404 page (without it Cloudflare Pages serves `index.html` for every path, creating "soft 404s") |
+| `favicon.svg` | Site icon shown in search results |
+
+The site URL `https://space-job-board.pages.dev` is used in `index.html` (canonical, Open Graph, JSON-LD), `robots.txt` and `sitemap.xml`. If you use a custom domain, replace it in all three.
+
+If you add a new job source on a different host, add that host to `connect-src` in `_headers` or its requests will be blocked.
+
 ### Serving locally
 
 ```bash
@@ -59,7 +75,7 @@ python -m http.server
 | CesiumAstro | `CesiumAstro` |
 | Venus Aerospace | `venusaerospace` |
 
-If a source fails to load (shown in the warning banner), its Greenhouse/Lever slug may have changed. See `Space Companies - Recruiting Platforms.md` to look up the correct slug and update `SOURCES` in `index.html`.
+If a source fails to load (shown in the warning banner), its Greenhouse/Lever slug may have changed. See `Space Companies - Recruiting Platforms.md` to look up the correct slug and update `SOURCES` in `app.js`.
 
 ---
 
@@ -128,6 +144,8 @@ STOKE_DATA_DIR=/var/lib/stoke_monitor python3 stoke_job_monitor.py
 ```
 space-job-board/
 ├── index.html                              # Browser job board (Cloudflare Pages)
+├── app.js / styles.css                     # Board script and styles
+├── _headers, robots.txt, sitemap.xml, 404.html, favicon.svg  # Hosting, SEO & security
 ├── stoke_job_monitor.py                    # Cron alert script
 ├── Space Companies.txt                     # 56-company research list
 ├── Space Companies - Recruiting Platforms.md  # ATS platform research
@@ -145,7 +163,7 @@ space-job-board/
 
 | Problem | Fix |
 |---|---|
-| Jobs don't load / source error banner | Check browser console — slug may have changed. Look up correct slug in `Space Companies - Recruiting Platforms.md` and update `SOURCES` in `index.html` |
+| Jobs don't load / source error banner | Check browser console — slug may have changed. Look up correct slug in `Space Companies - Recruiting Platforms.md` and update `SOURCES` in `app.js` |
 | `python3: command not found` | Install Python 3.10+ or use the full path in your cron line |
 | API returns 404 in monitor script | Update `GREENHOUSE_API_URL` slug in `stoke_job_monitor.py` |
 | Want to re-alert on all current jobs | Run `python3 stoke_job_monitor.py --reset` |
