@@ -5,7 +5,7 @@
   --surface: #13161d;
   --border: #1f2430;
   --text: #e8eaf0;
-  --muted: #6b7280;
+  --muted: #858b96;
   --accent: #f05a28;
   --pill-bg: #1a1e28;
   --card-bg: #13161d;
@@ -125,7 +125,7 @@ header {
 .pill[data-loc="all"].active {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: #0a0c10;
   font-weight: 600;
 }
 

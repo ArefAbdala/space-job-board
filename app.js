@@ -39,10 +39,13 @@ let lastFetchedInterval = null;
 
 // ── Color utility ─────────────────────────────────────────────────────────
 function isLightColor(hex) {
-  const r = parseInt(hex.slice(1,3), 16);
-  const g = parseInt(hex.slice(3,5), 16);
-  const b = parseInt(hex.slice(5,7), 16);
-  return (0.299*r + 0.587*g + 0.114*b) / 255 > 0.58;
+  // True when dark text (#0a0c10) has better WCAG contrast on this colour than white.
+  const lin = c => { c /= 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
+  const L = 0.2126 * lin(parseInt(hex.slice(1,3), 16))
+          + 0.7152 * lin(parseInt(hex.slice(3,5), 16))
+          + 0.0722 * lin(parseInt(hex.slice(5,7), 16));
+  const DARK_L = 0.0037; // luminance of #0a0c10
+  return (L + 0.05) / (DARK_L + 0.05) > 1.05 / (L + 0.05);
 }
 
 // ── Normalize API responses to common shape ───────────────────────────────
@@ -200,6 +203,7 @@ function renderSourceErrors() {
 // ── Pill factory ──────────────────────────────────────────────────────────
 function makePill(text, attrs = {}, active = false) {
   const btn = document.createElement('button');
+  btn.type = 'button';
   btn.className = 'pill' + (active ? ' active' : '');
   btn.textContent = text;
   for (const [k, v] of Object.entries(attrs)) btn.setAttribute(k, v);
