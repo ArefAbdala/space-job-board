@@ -1,0 +1,27 @@
+# Cloudflare Pages response headers — https://developers.cloudflare.com/pages/configuration/headers/
+
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://boards-api.greenhouse.io https://api.lever.co; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; upgrade-insecure-requests
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()
+  Cross-Origin-Opener-Policy: same-origin
+
+# Assets aren't fingerprinted, so let browsers cache briefly and revalidate.
+/app.js
+  Cache-Control: public, max-age=3600, must-revalidate
+/styles.css
+  Cache-Control: public, max-age=3600, must-revalidate
+
+# Repo files that are deployed alongside the site but aren't part of it —
+# keep them out of search results.
+/data/*
+  X-Robots-Tag: noindex, nofollow
+/stoke_job_monitor.py
+  X-Robots-Tag: noindex, nofollow
+/README.md
+  X-Robots-Tag: noindex, nofollow
+/requirements.txt
+  X-Robots-Tag: noindex, nofollow

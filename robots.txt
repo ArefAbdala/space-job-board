@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /data/
+Disallow: /*.py$
+Disallow: /*.md$
+Disallow: /requirements.txt
+Disallow: /Space%20Companies.txt
+
+Sitemap: https://space-job-board.pages.dev/sitemap.xml

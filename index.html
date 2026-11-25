@@ -3,1028 +3,171 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Space Industry Job Board</title>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  <title>Space Industry Job Board – Aerospace &amp; Rocket Jobs</title>
+  <meta name="description" content="Live job openings from 20 space and aerospace companies — SpaceX, Rocket Lab, Relativity, Stoke Space, Anduril, Planet and more. Filter by company, department, location, or keyword.">
+  <meta name="robots" content="index, follow">
+  <meta name="theme-color" content="#0a0c10">
+  <meta name="color-scheme" content="dark">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <link rel="canonical" href="https://space-job-board.pages.dev/">
 
-    :root {
-      --bg: #0a0c10;
-      --surface: #13161d;
-      --border: #1f2430;
-      --text: #e8eaf0;
-      --muted: #6b7280;
-      --accent: #f05a28;
-      --pill-bg: #1a1e28;
-      --card-bg: #13161d;
-      --card-hover: #181c27;
-    }
+  <!-- Open Graph / social previews -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Space Jobs">
+  <meta property="og:title" content="Space Industry Job Board">
+  <meta property="og:description" content="Live job openings from 20 space and aerospace companies, filterable by company, department, location, and keyword.">
+  <meta property="og:url" content="https://space-job-board.pages.dev/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Space Industry Job Board">
+  <meta name="twitter:description" content="Live job openings from 20 space and aerospace companies.">
 
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-      min-height: 100vh;
-    }
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://boards-api.greenhouse.io" crossorigin>
+  <link rel="preconnect" href="https://api.lever.co" crossorigin>
+  <link rel="stylesheet" href="/styles.css">
 
-    /* ── Header ── */
-    header {
-      border-bottom: 1px solid var(--border);
-      padding: 18px 32px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 12px;
-    }
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "Space Industry Job Board",
+    "alternateName": "Space Jobs",
+    "url": "https://space-job-board.pages.dev/",
+    "description": "Live job openings from space and aerospace companies."
+  }
+  </script>
 
-    .header-left { display: flex; align-items: center; gap: 14px; }
-
-    .site-title {
-      font-size: 1rem;
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: var(--accent);
-    }
-
-    .header-divider { width: 1px; height: 18px; background: var(--border); }
-
-    .header-subtitle { font-size: 0.82rem; color: var(--muted); }
-
-    .header-right { display: flex; align-items: center; gap: 12px; }
-
-    #last-fetched { font-size: 0.78rem; color: var(--muted); }
-
-    .refresh-btn {
-      padding: 5px 13px;
-      border-radius: 7px;
-      border: 1px solid var(--border);
-      background: var(--surface);
-      color: var(--text);
-      font-size: 0.8rem;
-      cursor: pointer;
-      transition: border-color 0.15s;
-    }
-    .refresh-btn:hover { border-color: var(--accent); }
-    .refresh-btn:disabled { opacity: 0.45; cursor: not-allowed; }
-
-    /* ── Source errors ── */
-    .source-errors {
-      padding: 9px 32px;
-      background: rgba(239, 83, 80, 0.07);
-      border-bottom: 1px solid rgba(239, 83, 80, 0.18);
-      font-size: 0.78rem;
-      color: #ef9a9a;
-      display: none;
-    }
-    .source-errors.visible { display: block; }
-
-    /* ── Filters ── */
-    .filters {
-      padding: 18px 32px;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-
-    .filter-row {
-      display: flex;
-      align-items: flex-start;
-      gap: 12px;
-    }
-
-    .filter-label {
-      font-size: 0.7rem;
-      font-weight: 600;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: var(--muted);
-      min-width: 72px;
-      padding-top: 6px;
-      flex-shrink: 0;
-    }
-
-    .pills {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-    }
-
-    .pill {
-      padding: 4px 11px;
-      border-radius: 20px;
-      border: 1px solid var(--border);
-      background: var(--pill-bg);
-      color: var(--muted);
-      font-size: 0.75rem;
-      cursor: pointer;
-      transition: background 0.15s, color 0.15s, border-color 0.15s;
-      user-select: none;
-      white-space: nowrap;
-    }
-    .pill:hover:not(:disabled) { color: var(--text); border-color: var(--muted); }
-    .pill:disabled { opacity: 0.35; cursor: not-allowed; }
-
-    /* "All" pills use accent */
-    .pill[data-company="all"].active,
-    .pill[data-dept="all"].active,
-    .pill[data-loc="all"].active {
-      background: var(--accent);
-      border-color: var(--accent);
-      color: #fff;
-      font-weight: 600;
-    }
-
-    /* Company/dept/loc pills use per-pill --pill-color */
-    .pill[data-company]:not([data-company="all"]).active,
-    .pill[data-dept]:not([data-dept="all"]).active,
-    .pill[data-loc]:not([data-loc="all"]).active {
-      background: var(--pill-color, var(--accent));
-      border-color: var(--pill-color, var(--accent));
-      color: var(--pill-text-color, #fff);
-      font-weight: 600;
-    }
-
-    .search-input {
-      flex: 1;
-      max-width: 420px;
-      padding: 5px 13px;
-      border-radius: 7px;
-      border: 1px solid var(--border);
-      background: var(--surface);
-      color: var(--text);
-      font-size: 0.875rem;
-      outline: none;
-      transition: border-color 0.15s;
-    }
-    .search-input::placeholder { color: var(--muted); }
-    .search-input:focus { border-color: var(--accent); }
-
-    /* ── Main ── */
-    main { padding: 22px 32px; }
-
-    .results-bar {
-      font-size: 0.83rem;
-      color: var(--muted);
-      margin-bottom: 18px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-    .results-bar strong { color: var(--text); }
-    .truncation-note { font-size: 0.75rem; color: #ef9a9a; }
-
-    /* ── Job grid ── */
-    .job-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(285px, 1fr));
-      gap: 13px;
-    }
-
-    /* Each card exposes --company-color; all styling derives from it */
-    .job-card {
-      --company-color: #6b7280;
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-top: 2px solid var(--company-color);
-      border-radius: 10px;
-      padding: 17px;
-      display: flex;
-      flex-direction: column;
-      gap: 7px;
-      transition: background 0.15s, border-color 0.15s, transform 0.1s;
-    }
-
-    .job-card:hover {
-      background: var(--card-hover);
-      transform: translateY(-2px);
-      border-color: color-mix(in srgb, var(--company-color) 35%, var(--border));
-      border-top-color: var(--company-color);
-    }
-
-    .card-header {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 8px;
-    }
-
-    .card-header-left { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
-
-    .job-title {
-      font-size: 0.91rem;
-      font-weight: 600;
-      color: var(--text);
-      line-height: 1.35;
-    }
-
-    .new-badge {
-      display: inline-block;
-      font-size: 0.58rem;
-      font-weight: 800;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      padding: 1px 6px;
-      border-radius: 3px;
-      background: var(--company-color);
-      color: color-mix(in srgb, var(--company-color) 0%, #0a0c10);
-      width: fit-content;
-    }
-
-    .company-badge {
-      flex-shrink: 0;
-      font-size: 0.6rem;
-      font-weight: 700;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      padding: 2px 7px;
-      border-radius: 4px;
-      margin-top: 2px;
-      background: color-mix(in srgb, var(--company-color) 15%, #13161d);
-      color: var(--company-color);
-      white-space: nowrap;
-    }
-
-    .job-meta { display: flex; flex-direction: column; gap: 3px; }
-
-    .job-location, .job-dept {
-      font-size: 0.77rem;
-      color: var(--muted);
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .job-location::before { content: "◎"; font-size: 0.58rem; color: var(--company-color); flex-shrink: 0; }
-    .job-dept::before    { content: "◈"; font-size: 0.58rem; color: var(--company-color); flex-shrink: 0; }
-
-    .job-dates { display: flex; flex-direction: column; gap: 3px; }
-
-    .job-published {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      font-size: 0.74rem;
-      font-weight: 600;
-      padding: 2px 7px;
-      border-radius: 4px;
-      width: fit-content;
-      background: color-mix(in srgb, var(--company-color) 12%, #13161d);
-      color: var(--company-color);
-    }
-
-    .job-updated { font-size: 0.69rem; color: var(--muted); padding-left: 2px; }
-    .time-ago { font-weight: 400; opacity: 0.7; white-space: nowrap; }
-
-    .job-card-footer {
-      margin-top: auto;
-      padding-top: 9px;
-      border-top: 1px solid var(--border);
-    }
-
-    .view-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 0.79rem;
-      font-weight: 600;
-      text-decoration: none;
-      color: var(--company-color);
-      transition: gap 0.15s;
-    }
-    .view-btn:hover { gap: 10px; }
-
-    /* ── State messages ── */
-    .state-msg {
-      text-align: center;
-      padding: 60px 20px;
-      color: var(--muted);
-      font-size: 0.9rem;
-    }
-    .state-msg .icon { font-size: 2.5rem; margin-bottom: 12px; display: block; }
-
-    .spinner {
-      width: 36px; height: 36px;
-      border: 3px solid var(--border);
-      border-top-color: var(--accent);
-      border-radius: 50%;
-      animation: spin 0.7s linear infinite;
-      margin: 0 auto 16px;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    .truncation-bar {
-      text-align: center;
-      padding: 18px 0 4px;
-      font-size: 0.8rem;
-      color: var(--muted);
-    }
-
-    /* ── Responsive ── */
-    /* Group pills (state-level) get a dashed border when inactive */
-    .pill[data-loc^="~"] { border-style: dashed; }
-
-    .pill-sep {
-      width: 1px;
-      height: 22px;
-      background: var(--border);
-      align-self: center;
-      flex-shrink: 0;
-    }
-
-    @media (max-width: 600px) {
-      header, .filters, main { padding-left: 16px; padding-right: 16px; }
-      .filter-row { flex-direction: column; gap: 6px; }
-      .filter-label { padding-top: 0; min-width: unset; }
-      .search-input { max-width: 100%; }
-      .source-errors { padding: 9px 16px; }
-    }
-  </style>
+  <script src="/app.js" defer></script>
 </head>
 <body>
 
-<header>
-  <div class="header-left">
-    <span class="site-title">Space Jobs</span>
-    <div class="header-divider"></div>
-    <span class="header-subtitle" id="source-count-label">Loading…</span>
-  </div>
-  <div class="header-right">
-    <span id="last-fetched"></span>
-    <button class="refresh-btn" id="refresh-btn" onclick="loadJobs()">↻ Refresh</button>
+<a class="skip-link" href="#results">Skip to job listings</a>
+
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a class="brand" href="/" aria-label="Space Jobs home">
+      <img src="/favicon.svg" alt="" width="28" height="28">
+      <span>Space Jobs</span>
+    </a>
+    <div class="header-right">
+      <span id="last-fetched" class="last-fetched" aria-live="polite"></span>
+      <button type="button" class="icon-btn" id="refresh-btn" aria-label="Refresh job listings" title="Refresh">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></svg>
+      </button>
+    </div>
   </div>
 </header>
 
-<div class="source-errors" id="source-errors"></div>
+<main id="main">
 
-<section class="filters">
-  <div class="filter-row">
-    <div class="filter-label">Company</div>
-    <div class="pills" id="company-pills"></div>
-  </div>
-  <div class="filter-row">
-    <div class="filter-label">Dept</div>
-    <div class="pills" id="dept-pills">
-      <button class="pill active" data-dept="all">All</button>
-    </div>
-  </div>
-  <div class="filter-row">
-    <div class="filter-label">In US</div>
-    <div class="pills" id="us-location-pills">
-      <button class="pill active" data-loc="all">All</button>
-    </div>
-  </div>
-  <div class="filter-row">
-    <div class="filter-label">Outside US</div>
-    <div class="pills" id="intl-location-pills"></div>
-  </div>
-  <div class="filter-row">
-    <div class="filter-label">Keywords</div>
-    <input class="search-input" id="keyword-input" type="search"
-      placeholder="title, skill, keyword…" autocomplete="off">
+<section class="hero">
+  <div class="wrap">
+    <h1>Find your next job in space</h1>
+    <p class="hero-sub">
+      Live openings from 20 rocket, satellite and aerospace companies, pulled straight
+      from their careers pages every time you visit.
+    </p>
+    <p class="stats" id="stats" aria-live="polite">Loading the latest openings…</p>
   </div>
 </section>
 
-<main>
-  <div class="results-bar" id="results-bar"></div>
-  <div id="job-container">
-    <div class="state-msg">
-      <div class="spinner"></div>
-      Loading jobs from multiple sources…
+<div class="toolbar" id="toolbar">
+  <div class="wrap">
+    <form class="search" id="search-form" role="search">
+      <svg class="search-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="search" type="search" placeholder="Search title, company, skill or city" aria-label="Search jobs" autocomplete="off" enterkeyhint="search">
+      <kbd class="kbd-hint" aria-hidden="true">/</kbd>
+      <button type="button" class="search-clear" id="search-clear" aria-label="Clear search" hidden>×</button>
+      <button type="submit" class="sr-only">Search</button>
+    </form>
+
+    <div class="filter-bar">
+      <div class="dd" data-facet="company">
+        <button type="button" class="dd-btn" aria-expanded="false" aria-controls="dd-company">Company <span class="dd-badge" hidden></span><svg class="caret" viewBox="0 0 12 12" aria-hidden="true"><path d="m3 4.5 3 3 3-3"/></svg></button>
+        <div class="dd-panel" id="dd-company" role="group" aria-label="Filter by company" hidden>
+          <input type="search" class="dd-search" placeholder="Search companies" aria-label="Search companies" autocomplete="off">
+          <div class="dd-list"></div>
+          <p class="dd-nomatch" hidden>No matches</p>
+          <div class="dd-foot"><button type="button" class="link-btn dd-clear">Clear</button><button type="button" class="btn-primary dd-done">Done</button></div>
+        </div>
+      </div>
+      <div class="dd" data-facet="dept">
+        <button type="button" class="dd-btn" aria-expanded="false" aria-controls="dd-dept">Department <span class="dd-badge" hidden></span><svg class="caret" viewBox="0 0 12 12" aria-hidden="true"><path d="m3 4.5 3 3 3-3"/></svg></button>
+        <div class="dd-panel" id="dd-dept" role="group" aria-label="Filter by department" hidden>
+          <input type="search" class="dd-search" placeholder="Search departments" aria-label="Search departments" autocomplete="off">
+          <div class="dd-list"></div>
+          <p class="dd-nomatch" hidden>No matches</p>
+          <div class="dd-foot"><button type="button" class="link-btn dd-clear">Clear</button><button type="button" class="btn-primary dd-done">Done</button></div>
+        </div>
+      </div>
+      <div class="dd" data-facet="loc">
+        <button type="button" class="dd-btn" aria-expanded="false" aria-controls="dd-loc">Location <span class="dd-badge" hidden></span><svg class="caret" viewBox="0 0 12 12" aria-hidden="true"><path d="m3 4.5 3 3 3-3"/></svg></button>
+        <div class="dd-panel" id="dd-loc" role="group" aria-label="Filter by location" hidden>
+          <input type="search" class="dd-search" placeholder="Search cities, states, countries" aria-label="Search locations" autocomplete="off">
+          <div class="dd-list"></div>
+          <p class="dd-nomatch" hidden>No matches</p>
+          <div class="dd-foot"><button type="button" class="link-btn dd-clear">Clear</button><button type="button" class="btn-primary dd-done">Done</button></div>
+        </div>
+      </div>
+
+      <button type="button" class="toggle" id="toggle-remote" aria-pressed="false">Remote</button>
+      <button type="button" class="toggle" id="toggle-new" aria-pressed="false">New this week</button>
+
+      <label class="sort">
+        <span>Sort</span>
+        <select id="sort" aria-label="Sort jobs">
+          <option value="newest">Newest first</option>
+          <option value="oldest">Oldest first</option>
+          <option value="company">Company A–Z</option>
+          <option value="title">Job title A–Z</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="active-filters" id="active-filters" hidden>
+      <div class="chip-list" id="chip-list"></div>
+      <button type="button" class="link-btn" id="clear-all">Clear all</button>
     </div>
   </div>
+</div>
+<div class="dd-backdrop" id="dd-backdrop"></div>
+
+<div id="results" class="wrap results" tabindex="-1">
+  <h2 class="sr-only">Job listings</h2>
+  <div class="notice" id="notice" role="status" hidden>
+    <span id="notice-text"></span>
+    <button type="button" class="notice-close" id="notice-close" aria-label="Dismiss">×</button>
+  </div>
+
+  <p class="result-count" id="result-count" aria-live="polite"></p>
+
+  <noscript>
+    <p class="noscript-msg">This job board needs JavaScript to load live listings from each company's careers page.</p>
+  </noscript>
+
+  <div id="job-container"></div>
+
+  <div class="more-wrap" id="more-wrap" hidden>
+    <p class="more-note" id="more-note"></p>
+    <button type="button" class="btn-secondary" id="more-btn">Show more</button>
+  </div>
+</div>
+
 </main>
 
-<script>
-  // ── Sources ───────────────────────────────────────────────────────────────
-  // Greenhouse slugs marked "confirmed" are verified; others gracefully fail if wrong.
-  const SOURCES = [
-    // Greenhouse — confirmed
-    { name: 'Stoke Space',           slug: 'stokespacetechnologies', api: 'greenhouse', color: '#f05a28' },
-    { name: 'SpaceX',                slug: 'spacex',                 api: 'greenhouse', color: '#4d9fff' },
-    { name: 'Relativity Space',      slug: 'relativity',             api: 'greenhouse', color: '#a259ff' },
-    { name: 'Rocket Lab',            slug: 'rocketlab',              api: 'greenhouse', color: '#e8c84a' },
-    { name: 'Inversion Space',       slug: 'inversionspace',         api: 'greenhouse', color: '#ff6b6b' },
-    { name: 'Varda Space',           slug: 'vardaspace',             api: 'greenhouse', color: '#80cbc4' },
-    // Greenhouse — likely (graceful failure if slug is wrong)
-    { name: 'Vast Space',            slug: 'vast',                   api: 'greenhouse', color: '#26c6da' },
-    { name: 'Astranis',              slug: 'astranis',               api: 'greenhouse', color: '#66bb6a' },
-    { name: 'Muon Space',            slug: 'muonspace',              api: 'greenhouse', color: '#ff8a65' },
-    { name: 'Albedo',                slug: 'albedo',                 api: 'greenhouse', color: '#ba68c8' },
-    { name: 'True Anomaly',          slug: 'trueanomalyinc',         api: 'greenhouse', color: '#ef5350' },
-    { name: 'Ursa Major',            slug: 'ursamajor',              api: 'greenhouse', color: '#ffa726' },
-    { name: 'AST SpaceMobile',       slug: 'astspacemobile',         api: 'greenhouse', color: '#26a69a' },
-    { name: 'Anduril',               slug: 'andurilindustries',      api: 'greenhouse', color: '#5c6bc0' },
-    { name: 'Voyager Technologies',  slug: 'voyagertechnologiesinc', api: 'greenhouse', color: '#8d6e63' },
-    { name: 'Planet Labs',           slug: 'planetlabs',             api: 'greenhouse', color: '#4db6ac' },
-    { name: 'BlackSky',              slug: 'blacksky',               api: 'greenhouse', color: '#7986cb' },
-    // Lever — confirmed
-    { name: 'Hermeus',               slug: 'hermeus',                api: 'lever',      color: '#ff5252' },
-    { name: 'CesiumAstro',           slug: 'CesiumAstro',            api: 'lever',      color: '#40c4ff' },
-    { name: 'Venus Aerospace',       slug: 'venusaero',              api: 'lever',      color: '#ea80fc' },
-  ];
+<footer class="site-footer">
+  <div class="wrap">
+    <h2>Companies covered</h2>
+    <ul>
+      <li>Stoke Space</li><li>SpaceX</li><li>Relativity Space</li><li>Rocket Lab</li>
+      <li>Inversion Space</li><li>Varda Space</li><li>Vast Space</li><li>Astranis</li>
+      <li>Muon Space</li><li>Albedo</li><li>True Anomaly</li><li>Ursa Major</li>
+      <li>AST SpaceMobile</li><li>Anduril</li><li>Voyager Technologies</li><li>Planet Labs</li>
+      <li>BlackSky</li><li>Hermeus</li><li>CesiumAstro</li><li>Venus Aerospace</li>
+    </ul>
+    <p>Every listing links to the employer's official application page. Space Jobs isn't affiliated with any listed company.</p>
+  </div>
+</footer>
 
-  const MAX_DISPLAY = 500;
-  const NEW_THRESHOLD_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
-
-  let allJobs = [];
-  let activeCompanies = new Set();
-  let activeDepts     = new Set();
-  let activeLocations = new Set();
-  let sourceErrors    = {};
-  let lastFetched     = null;
-  let lastFetchedInterval = null;
-
-  // ── Color utility ─────────────────────────────────────────────────────────
-  function isLightColor(hex) {
-    const r = parseInt(hex.slice(1,3), 16);
-    const g = parseInt(hex.slice(3,5), 16);
-    const b = parseInt(hex.slice(5,7), 16);
-    return (0.299*r + 0.587*g + 0.114*b) / 255 > 0.58;
-  }
-
-  // ── Normalize API responses to common shape ───────────────────────────────
-  function normalizeGreenhouse(data, source) {
-    return (data.jobs || []).map(j => ({
-      id:          `gh-${j.id}`,
-      title:       j.title || '',
-      location:    j.location?.name || '',
-      department:  (j.departments || []).map(d => d.name).filter(Boolean).join(', '),
-      url:         j.absolute_url || '',
-      publishedAt: j.first_published || null,
-      updatedAt:   j.updated_at || null,
-      _company: source.name,
-      _color:   source.color,
-      _api:     'greenhouse',
-    }));
-  }
-
-  function normalizeLever(data, source) {
-    return (Array.isArray(data) ? data : []).map(j => {
-      const ts = j.createdAt ? new Date(j.createdAt).toISOString() : null;
-      return {
-        id:          `lv-${j.id}`,
-        title:       j.text || '',
-        location:    j.categories?.location || '',
-        department:  j.categories?.team || j.categories?.department || '',
-        url:         j.hostedUrl || j.applyUrl || '',
-        publishedAt: ts,
-        updatedAt:   ts,
-        _company: source.name,
-        _color:   source.color,
-        _api:     'lever',
-      };
-    });
-  }
-
-  // ── Fetch ─────────────────────────────────────────────────────────────────
-  async function fetchSource(source) {
-    const url = source.api === 'greenhouse'
-      ? `https://boards-api.greenhouse.io/v1/boards/${source.slug}/jobs`
-      : `https://api.lever.co/v0/postings/${source.slug}?mode=json`;
-    const r = await fetch(url);
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    const data = await r.json();
-    return source.api === 'greenhouse'
-      ? normalizeGreenhouse(data, source)
-      : normalizeLever(data, source);
-  }
-
-  async function loadJobs() {
-    setLoading(true);
-    sourceErrors = {};
-    activeCompanies.clear();
-    activeDepts.clear();
-    activeLocations.clear();
-
-    const results = await Promise.allSettled(SOURCES.map(s => fetchSource(s)));
-
-    allJobs = [];
-    for (let i = 0; i < results.length; i++) {
-      if (results[i].status === 'fulfilled') {
-        allJobs.push(...results[i].value);
-      } else {
-        sourceErrors[SOURCES[i].name] = results[i].reason?.message || 'Unknown error';
-      }
-    }
-
-    // Sort newest first; mark jobs < 7 days old
-    const now = Date.now();
-    allJobs.sort((a, b) => new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0));
-    allJobs.forEach(j => { j.isNew = !!(j.publishedAt && now - new Date(j.publishedAt) < NEW_THRESHOLD_MS); });
-
-    // Pre-compute expensive per-job data once so render() and filterJobs() are cheap
-    allJobs.forEach(j => {
-      j._locParts = splitLocations(j.location).map(l => normalizeLocation(l));
-      const newBadge = j.isNew ? `<span class="new-badge">New</span>` : '';
-      const deptHtml = j.department ? `<div class="job-dept">${escHtml(j.department)}</div>` : '';
-      j._cardInner = `
-        <div class="card-header">
-          <div class="card-header-left">
-            <div class="job-title">${escHtml(j.title)}</div>
-            ${newBadge}
-          </div>
-          <span class="company-badge">${escHtml(j._company)}</span>
-        </div>
-        <div class="job-meta">
-          <div class="job-location">${escHtml(j.location || 'Location TBD')}</div>
-          ${deptHtml}
-        </div>
-        <div class="job-dates">${renderDates(j)}</div>
-        <div class="job-card-footer">
-          <a class="view-btn" href="${escHtml(j.url)}" target="_blank" rel="noopener">
-            View Job &rarr;
-          </a>
-        </div>`;
-    });
-
-    lastFetched = new Date();
-    clearInterval(lastFetchedInterval);
-    lastFetchedInterval = setInterval(updateLastFetchedDisplay, 60000);
-    updateLastFetchedDisplay();
-
-    updateSourceCountLabel();
-    buildCompanyPills();
-    buildDeptPills();
-    buildUSLocationPills();
-    buildIntlLocationPills();
-    renderSourceErrors();
-    setLoading(false);
-    render();
-  }
-
-  // ── Loading state ─────────────────────────────────────────────────────────
-  function setLoading(on) {
-    const btn = document.getElementById('refresh-btn');
-    if (on) {
-      document.getElementById('job-container').innerHTML =
-        `<div class="state-msg"><div class="spinner"></div>Loading from ${SOURCES.length} sources…</div>`;
-      btn.disabled = true;
-      btn.textContent = '↻ Loading…';
-    } else {
-      btn.disabled = false;
-      btn.textContent = '↻ Refresh';
-    }
-  }
-
-  // ── Last-fetched display ──────────────────────────────────────────────────
-  function updateLastFetchedDisplay() {
-    const el = document.getElementById('last-fetched');
-    if (!lastFetched) { el.textContent = ''; return; }
-    const sec = Math.floor((Date.now() - lastFetched) / 1000);
-    if (sec < 10)        el.textContent = 'Updated just now';
-    else if (sec < 60)   el.textContent = `Updated ${sec}s ago`;
-    else if (sec < 3600) el.textContent = `Updated ${Math.floor(sec/60)}m ago`;
-    else                 el.textContent = `Updated ${Math.floor(sec/3600)}h ago`;
-  }
-
-  function updateSourceCountLabel() {
-    const ok = SOURCES.length - Object.keys(sourceErrors).length;
-    document.getElementById('source-count-label').textContent =
-      `${ok} of ${SOURCES.length} sources · ${allJobs.length.toLocaleString()} jobs`;
-  }
-
-  // ── Source errors banner ──────────────────────────────────────────────────
-  function renderSourceErrors() {
-    const el = document.getElementById('source-errors');
-    const names = Object.keys(sourceErrors);
-    if (!names.length) { el.classList.remove('visible'); return; }
-    el.classList.add('visible');
-    el.textContent =
-      `⚠ ${names.length} source${names.length > 1 ? 's' : ''} failed to load: ${names.join(', ')}` +
-      ` — slugs may have changed. Check the Recruiting Platforms doc.`;
-  }
-
-  // ── Pill factory ──────────────────────────────────────────────────────────
-  function makePill(text, attrs = {}, active = false) {
-    const btn = document.createElement('button');
-    btn.className = 'pill' + (active ? ' active' : '');
-    btn.textContent = text;
-    for (const [k, v] of Object.entries(attrs)) btn.setAttribute(k, v);
-    return btn;
-  }
-
-  // ── Company pills ─────────────────────────────────────────────────────────
-  function buildCompanyPills() {
-    const container = document.getElementById('company-pills');
-    container.innerHTML = '';
-
-    const allBtn = makePill('All', { 'data-company': 'all' }, true);
-    allBtn.addEventListener('click', () => resetFilter('company'));
-    container.appendChild(allBtn);
-
-    for (const src of SOURCES) {
-      const failed = !!sourceErrors[src.name];
-      const btn = makePill(failed ? `${src.name} ⚠` : src.name, { 'data-company': src.name });
-      btn.style.setProperty('--pill-color', src.color);
-      btn.style.setProperty('--pill-text-color', isLightColor(src.color) ? '#0a0c10' : '#fff');
-      if (failed) { btn.disabled = true; btn.title = `Failed: ${sourceErrors[src.name]}`; }
-      btn.addEventListener('click', () => toggleSet(activeCompanies, src.name, btn, 'company'));
-      container.appendChild(btn);
-    }
-  }
-
-  // ── Department pills ──────────────────────────────────────────────────────
-  function buildDeptPills() {
-    const container = document.getElementById('dept-pills');
-    container.innerHTML = '';
-
-    const allBtn = makePill('All', { 'data-dept': 'all' }, true);
-    allBtn.addEventListener('click', () => resetFilter('dept'));
-    container.appendChild(allBtn);
-
-    // Count dept occurrences, only show those with > 1 job
-    const counts = {};
-    for (const job of allJobs) {
-      (job.department || '').split(',').forEach(d => {
-        const t = d.trim();
-        if (t) counts[t] = (counts[t] || 0) + 1;
-      });
-    }
-
-    Object.entries(counts)
-      .filter(([, n]) => n > 1)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .forEach(([dept]) => {
-        const btn = makePill(dept, { 'data-dept': dept });
-        btn.addEventListener('click', () => toggleSet(activeDepts, dept, btn, 'dept'));
-        container.appendChild(btn);
-      });
-  }
-
-  // ── Location normalization & pills ────────────────────────────────────────
-
-  // State/region group filters. Sentinel values start with "~" to distinguish
-  // them from individual normalized location strings in activeLocations.
-  const LOC_STATE_GROUPS = [
-    { label: 'California',  sentinel: '~CA',   test: l => /,\s*CA$/.test(l) },
-    { label: 'Texas',       sentinel: '~TX',   test: l => /,\s*TX$/.test(l) },
-    { label: 'Washington',  sentinel: '~WA',   test: l => /,\s*WA$/.test(l) },
-    { label: 'Florida',     sentinel: '~FL',   test: l => /,\s*FL$/.test(l) },
-    { label: 'Colorado',    sentinel: '~CO',   test: l => /,\s*CO$/.test(l) },
-  ];
-
-  // US state full name → 2-letter code; used to collapse "City, StateName" → "City, ST"
-  const US_STATES = {
-    'Alabama': 'AL', 'Alaska': 'AK', 'Arizona': 'AZ', 'Arkansas': 'AR',
-    'California': 'CA', 'Colorado': 'CO', 'Connecticut': 'CT', 'Delaware': 'DE',
-    'Florida': 'FL', 'Georgia': 'GA', 'Hawaii': 'HI', 'Idaho': 'ID',
-    'Illinois': 'IL', 'Indiana': 'IN', 'Iowa': 'IA', 'Kansas': 'KS',
-    'Kentucky': 'KY', 'Louisiana': 'LA', 'Maine': 'ME', 'Maryland': 'MD',
-    'Massachusetts': 'MA', 'Michigan': 'MI', 'Minnesota': 'MN', 'Mississippi': 'MS',
-    'Missouri': 'MO', 'Montana': 'MT', 'Nebraska': 'NE', 'Nevada': 'NV',
-    'New Hampshire': 'NH', 'New Jersey': 'NJ', 'New Mexico': 'NM', 'New York': 'NY',
-    'North Carolina': 'NC', 'North Dakota': 'ND', 'Ohio': 'OH', 'Oklahoma': 'OK',
-    'Oregon': 'OR', 'Pennsylvania': 'PA', 'Rhode Island': 'RI', 'South Carolina': 'SC',
-    'South Dakota': 'SD', 'Tennessee': 'TN', 'Texas': 'TX', 'Utah': 'UT',
-    'Vermont': 'VT', 'Virginia': 'VA', 'Washington': 'WA', 'West Virginia': 'WV',
-    'Wisconsin': 'WI', 'Wyoming': 'WY', 'District of Columbia': 'DC',
-  };
-  const US_STATE_CODES = new Set(Object.values(US_STATES));
-
-  // Split a raw location string on ; | & and the word "or" — NOT bare commas
-  function splitLocations(raw) {
-    if (!raw) return [];
-    return raw.split(/\s*[;|&]\s*|\s+or\s+/i).map(s => s.trim()).filter(Boolean);
-  }
-
-  const LOC_RULES = [
-    // ── International remotes — must precede the generic Remote rule ───────
-    [/(emea|europe|united kingdom|\buk\b|britain|canada|germany|japan|south korea|apac|\basia\b|singapore|australia|france|netherlands|slovenia|india|new zealand|norway|sweden|austria|ireland|poland|latvia|taiwan|china).*\bremote\b|\bremote\b.*(emea|europe|united kingdom|\buk\b|britain|canada|germany|japan|south korea|apac|\basia\b|singapore|australia|france|netherlands|slovenia|india|new zealand|norway|sweden|austria|ireland|poland|latvia|taiwan|china)/i, 'Remote (Intl)'],
-    // ── US Remote ─────────────────────────────────────────────────────────
-    [/^other\s*-\s*remote$/i,                                              'Remote'],
-    [/flexible/i,                                                          'Multiple US Sites'],
-    [/\bremote\b/i,                                                        'Remote'],
-    // ── Florida ───────────────────────────────────────────────────────────
-    [/cape canaveral|kennedy space/i,                                      'Cape Canaveral, FL'],
-    [/merritt island/i,                                                    'Merritt Island, FL'],
-    [/melbourne,?\s*fl/i,                                                  'Melbourne, FL'],  // before Australia rule
-    // ── Texas ─────────────────────────────────────────────────────────────
-    [/boca chica|starbase/i,                                               'Starbase, TX'],
-    // ── California ────────────────────────────────────────────────────────
-    [/long beach/i,                                                        'Long Beach, CA'],
-    [/san francisco|sf,\s*ca/i,                                            'San Francisco, CA'],
-    [/san diego/i,                                                         'San Diego, CA'],
-    [/mojave/i,                                                            'Mojave, CA'],
-    [/el segundo/i,                                                        'El Segundo, CA'],
-    [/hawthorne/i,                                                         'Hawthorne, CA'],
-    [/los angeles/i,                                                       'Los Angeles, CA'],
-    [/mountain view/i,                                                     'Mountain View, CA'],
-    [/palo alto/i,                                                         'Palo Alto, CA'],
-    [/playa vista/i,                                                       'Playa Vista, CA'],
-    [/redondo beach/i,                                                     'Redondo Beach, CA'],
-    [/aliso viejo/i,                                                       'Aliso Viejo, CA'],
-    [/costa mesa/i,                                                        'Costa Mesa, CA'],
-    [/santa ana/i,                                                         'Santa Ana, CA'],
-    [/irvine/i,                                                            'Irvine, CA'],
-    [/foothill ranch/i,                                                    'Foothill Ranch, CA'],
-    [/goleta/i,                                                            'Goleta, CA'],
-    [/oceanside/i,                                                         'Oceanside, CA'],
-    [/pasadena/i,                                                          'Pasadena, CA'],
-    [/san jose/i,                                                          'San Jose, CA'],
-    [/sunnyvale/i,                                                         'Sunnyvale, CA'],
-    [/folsom/i,                                                            'Folsom, CA'],
-    [/vandenberg|lompoc/i,                                                 'Vandenberg, CA'],
-    // ── Washington state ──────────────────────────────────────────────────
-    [/redmond/i,                                                           'Redmond, WA'],
-    [/seattle/i,                                                           'Seattle, WA'],
-    [/kent,?\s*(wa|washington)/i,                                          'Kent, WA'],
-    [/auburn.*wa|auburn.*washington/i,                                     'Auburn, WA'],
-    [/moses lake/i,                                                        'Moses Lake, WA'],
-    // ── Colorado ──────────────────────────────────────────────────────────
-    [/berthoud/i,                                                          'Berthoud, CO'],
-    [/colorado springs/i,                                                  'Colorado Springs, CO'],
-    [/fort collins/i,                                                      'Fort Collins, CO'],
-    // ── Other US ──────────────────────────────────────────────────────────
-    [/albuquerque/i,                                                       'Albuquerque, NM'],
-    [/stennis/i,                                                           'Stennis Space Center, MS'],
-    // ── DC Metro / Northern VA ────────────────────────────────────────────
-    [/washington.*d\.?c\.?|district of columbia/i,                        'Washington DC Area'],
-    [/\bnorthern\s*va\b/i,                                                 'Washington DC Area'],
-    [/arlington.*va|arlington.*virginia/i,                                 'Washington DC Area'],
-    [/mclean|reston|chantilly|herndon|woodbridge.*va/i,                   'Washington DC Area'],
-    [/wallops|virginia.*island/i,                                          'Wallops Island, VA'],
-    // ── New Zealand ───────────────────────────────────────────────────────
-    [/new zealand|auckland|christchurch|mahia|waikato|warkworth/i,        'New Zealand'],
-    [/,\s*nz$/i,                                                           'New Zealand'],
-    // ── Australia ─────────────────────────────────────────────────────────
-    [/melbourne.*victoria|victoria.*australia|sydney.*wales|canberra.*australia|perth.*australia|brisbane/i, 'Australia'],
-    [/\baustralia\b/i,                                                     'Australia'],
-    // ── United Kingdom ────────────────────────────────────────────────────
-    [/edinburgh|scotland|llanbedr|\bwales\b|milton keynes|cambridge.*uk/i, 'United Kingdom'],
-    [/london.*england|london.*united kingdom/i,                            'United Kingdom'],
-    [/\bunited kingdom\b|\buk\b/i,                                         'United Kingdom'],
-    // ── Other international ───────────────────────────────────────────────
-    [/amsterdam|haarlem|netherlands/i,                                     'Netherlands'],
-    [/munich|berlin|germany/i,                                             'Germany'],
-    [/\bgraz\b|austria/i,                                                  'Austria'],
-    [/barcelona|spain/i,                                                   'Spain'],
-    [/\bparis\b|france/i,                                                  'France'],
-    [/buenos aires|argentina/i,                                            'Argentina'],
-    [/abu dhabi|\buae\b|united arab emirates/i,                           'UAE'],
-    [/\bsingapore\b/i,                                                     'Singapore'],
-    [/toronto.*can|toronto.*canada/i,                                      'Toronto, Canada'],
-    [/\bcanada\b/i,                                                        'Canada'],
-    [/hyderabad.*india|\bindia\b/i,                                        'India'],
-    [/seoul|south korea|republic of korea/i,                               'South Korea'],
-    [/okinawa|tokyo|japan/i,                                               'Japan'],
-    [/taipei|taiwan/i,                                                     'Taiwan'],
-    [/stockholm|sweden/i,                                                  'Sweden'],
-    [/\boslo\b|norway/i,                                                   'Norway'],
-    [/\bdublin\b|ireland/i,                                                'Ireland'],
-    [/\briga\b|latvia/i,                                                   'Latvia'],
-    [/\bwarsaw\b|poland/i,                                                 'Poland'],
-    [/ljubljana|slovenia/i,                                                'Slovenia'],
-    [/\bbrussels\b|belgium/i,                                              'Belgium'],
-    [/middle east/i,                                                       'Middle East'],
-  ];
-
-  function normalizeLocation(loc) {
-    if (!loc) return '';
-    let s = loc.trim();
-    // Strip country/region suffixes (comma, space, or dash before "United States"/"USA"/"US")
-    s = s.replace(/[,\s\-]+United States\s*$/i, '').trim();
-    s = s.replace(/[,\s\-]+USA\s*$/i,           '').trim();
-    s = s.replace(/,\s*US\s*$/,                 '').trim();
-    // Convert ", Full State Name" → ", ST"  (e.g. "Kent, Washington" → "Kent, WA")
-    s = s.replace(/,\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s*$/, (_, name) => {
-      const code = US_STATES[name];
-      return code ? `, ${code}` : `, ${name}`;
-    });
-    // Bare "US" or "USA" → Remote
-    if (/^(US|USA)$/i.test(s)) return 'Remote';
-    // Bare state name (e.g. "Colorado" from "Colorado, USA") → Remote (not a city, not useful as a pill)
-    if (US_STATES[s]) return 'Remote';
-    // Apply LOC_RULES
-    for (const [re, label] of LOC_RULES) if (re.test(s)) return label;
-    return s;
-  }
-
-  function isUSLocation(loc) {
-    if (!loc) return false;
-    if (/^remote\s*\(/i.test(loc)) return false;    // Remote (Intl) is not US
-    if (/,\s*[A-Z]{2}\b/.test(loc)) return true;    // "City, ST" or multi-city "City, ST City, ST"
-    if (loc === 'Remote' || loc === 'Washington DC Area' || loc === 'Multiple US Sites') return true;
-    if (US_STATE_CODES.has(loc)) return true;       // bare 2-letter state code
-    if (US_STATES[loc]) return true;                // bare state name (defensive)
-    if (/^flexible/i.test(loc)) return true;
-    return false;
-  }
-
-  function buildUSLocationPills() {
-    const container = document.getElementById('us-location-pills');
-    container.innerHTML = '';
-
-    const allBtn = makePill('All', { 'data-loc': 'all' }, true);
-    allBtn.addEventListener('click', () => resetFilter('loc'));
-    container.appendChild(allBtn);
-
-    // Collect US-only normalized locations
-    const locs = new Set();
-    for (const job of allJobs) {
-      for (const t of job._locParts) {
-        if (t && isUSLocation(t)) locs.add(t);
-      }
-    }
-
-    // State group pills
-    let addedGroups = 0;
-    for (const grp of LOC_STATE_GROUPS.filter(g => g.sentinel !== '~INTL')) {
-      if ([...locs].some(l => grp.test(l))) {
-        const btn = makePill(grp.label, { 'data-loc': grp.sentinel });
-        btn.addEventListener('click', () => toggleSet(activeLocations, grp.sentinel, btn, 'loc'));
-        container.appendChild(btn);
-        addedGroups++;
-      }
-    }
-
-    if (addedGroups > 0) {
-      const sep = document.createElement('span');
-      sep.className = 'pill-sep';
-      container.appendChild(sep);
-    }
-
-    // Individual US city pills
-    [...locs].sort((a, b) => {
-      const stA = (a.match(/,\s*([A-Z]{2})$/) || [])[1] || '';
-      const stB = (b.match(/,\s*([A-Z]{2})$/) || [])[1] || '';
-      if (a === 'Remote' && b !== 'Remote') return 1;
-      if (b === 'Remote' && a !== 'Remote') return -1;
-      if (stA && !stB) return -1;
-      if (stB && !stA) return 1;
-      if (stA !== stB) return stA.localeCompare(stB);
-      return a.localeCompare(b);
-    }).forEach(loc => {
-      const btn = makePill(loc, { 'data-loc': loc });
-      btn.addEventListener('click', () => toggleSet(activeLocations, loc, btn, 'loc'));
-      container.appendChild(btn);
-    });
-  }
-
-  function buildIntlLocationPills() {
-    const container = document.getElementById('intl-location-pills');
-    container.innerHTML = '';
-
-    // Collect non-US normalized locations
-    const locs = new Set();
-    for (const job of allJobs) {
-      for (const t of job._locParts) {
-        if (t && !isUSLocation(t)) locs.add(t);
-      }
-    }
-
-    if (locs.size === 0) {
-      container.innerHTML = '<span style="font-size:0.75rem;color:var(--muted);padding-top:6px">None in current results</span>';
-      return;
-    }
-
-    [...locs].sort((a, b) => a.localeCompare(b)).forEach(loc => {
-      const btn = makePill(loc, { 'data-loc': loc });
-      btn.addEventListener('click', () => toggleSet(activeLocations, loc, btn, 'loc'));
-      container.appendChild(btn);
-    });
-  }
-
-  // ── Filter toggle / reset ─────────────────────────────────────────────────
-  function toggleSet(set, value, btn, type) {
-    if (set.has(value)) { set.delete(value); btn.classList.remove('active'); }
-    else                { set.add(value);    btn.classList.add('active'); }
-    document.querySelectorAll(`[data-${type}="all"]`).forEach(p => p.classList.toggle('active', set.size === 0));
-    render();
-  }
-
-  function resetFilter(type) {
-    const set = type === 'company' ? activeCompanies : type === 'dept' ? activeDepts : activeLocations;
-    set.clear();
-    document.querySelectorAll(`[data-${type}]`).forEach(p => p.classList.remove('active'));
-    document.querySelectorAll(`[data-${type}="all"]`).forEach(p => p.classList.add('active'));
-    render();
-  }
-
-  // ── Filter jobs ───────────────────────────────────────────────────────────
-  function filterJobs() {
-    const kw = document.getElementById('keyword-input').value.trim().toLowerCase();
-    return allJobs.filter(job => {
-      if (activeCompanies.size > 0 && !activeCompanies.has(job._company)) return false;
-      if (activeDepts.size > 0) {
-        const jobDepts = (job.department || '').split(',').map(d => d.trim());
-        if (![...activeDepts].some(d => jobDepts.includes(d))) return false;
-      }
-      if (activeLocations.size > 0) {
-        const parts = job._locParts;
-        let matches = false;
-        for (const al of activeLocations) {
-          if (al.startsWith('~')) {
-            const grp = LOC_STATE_GROUPS.find(g => g.sentinel === al);
-            if (grp && parts.some(p => grp.test(p))) { matches = true; break; }
-          } else if (parts.includes(al)) { matches = true; break; }
-        }
-        if (!matches) return false;
-      }
-      if (kw) {
-        const haystack = `${job.title} ${job.department} ${job.location}`.toLowerCase();
-        if (!haystack.includes(kw)) return false;
-      }
-      return true;
-    });
-  }
-
-  // ── Date formatting ───────────────────────────────────────────────────────
-  function fmtDate(iso) {
-    if (!iso) return '';
-    return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  }
-
-  function timeAgo(iso) {
-    if (!iso) return '';
-    const sec = Math.floor((Date.now() - new Date(iso)) / 1000);
-    if (sec < 60)          return 'just now';
-    if (sec < 3600)        return `${Math.floor(sec/60)}m ago`;
-    if (sec < 86400)       return `${Math.floor(sec/3600)}h ago`;
-    if (sec < 86400*30)    return `${Math.floor(sec/86400)}d ago`;
-    if (sec < 86400*365)   return `${Math.floor(sec/(86400*30))}mo ago`;
-    return `${Math.floor(sec/(86400*365))}y ago`;
-  }
-
-  function renderDates(job) {
-    const pub = job.publishedAt, upd = job.updatedAt;
-    const sameDay = pub && upd && pub.slice(0,10) === upd.slice(0,10);
-    if (sameDay || !upd || upd === pub) {
-      return `<div class="job-published">⬡ ${fmtDate(pub)} <span class="time-ago">(${timeAgo(pub)})</span></div>`;
-    }
-    return `
-      <div class="job-published">⬡ Published ${fmtDate(pub)} <span class="time-ago">(${timeAgo(pub)})</span></div>
-      <div class="job-updated">Updated ${fmtDate(upd)} <span class="time-ago">(${timeAgo(upd)})</span></div>`;
-  }
-
-  // ── Render ────────────────────────────────────────────────────────────────
-  function render() {
-    const filtered = filterJobs();
-    const container = document.getElementById('job-container');
-    const bar       = document.getElementById('results-bar');
-
-    // Results bar
-    const total = filtered.length;
-    let barHtml = `<strong>${total.toLocaleString()}</strong> job${total !== 1 ? 's' : ''}`;
-    if (total > MAX_DISPLAY) {
-      barHtml += ` <span class="truncation-note">(showing first ${MAX_DISPLAY} — use filters to narrow)</span>`;
-    }
-    if (activeCompanies.size > 0 && activeCompanies.size <= 5) {
-      const counts = {};
-      filtered.forEach(j => { counts[j._company] = (counts[j._company] || 0) + 1; });
-      const breakdown = [...activeCompanies].map(c => `${counts[c] || 0} ${c}`).join(' · ');
-      barHtml += `&nbsp; <span style="opacity:.45">|</span> &nbsp;${breakdown}`;
-    }
-    bar.innerHTML = barHtml;
-
-    if (total === 0) {
-      container.innerHTML = `<div class="state-msg"><span class="icon">🔭</span>No jobs match your filters.</div>`;
-      return;
-    }
-
-    const grid = document.createElement('div');
-    grid.className = 'job-grid';
-
-    const limit = Math.min(total, MAX_DISPLAY);
-    for (let i = 0; i < limit; i++) {
-      const job = filtered[i];
-      const card = document.createElement('div');
-      card.className = 'job-card';
-      card.style.setProperty('--company-color', job._color);
-      card.innerHTML = job._cardInner;
-      grid.appendChild(card);
-    }
-
-    container.innerHTML = '';
-    container.appendChild(grid);
-
-    if (total > MAX_DISPLAY) {
-      const note = document.createElement('div');
-      note.className = 'truncation-bar';
-      note.textContent = `${(total - MAX_DISPLAY).toLocaleString()} more results — refine your filters to see them`;
-      container.appendChild(note);
-    }
-  }
-
-  function escHtml(s) {
-    return String(s)
-      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-      .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-  }
-
-  // ── Debounced keyword search ──────────────────────────────────────────────
-  let debounceTimer;
-  document.getElementById('keyword-input').addEventListener('input', () => {
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(render, 200);
-  });
-
-  // ── Init ──────────────────────────────────────────────────────────────────
-  loadJobs();
-</script>
 </body>
 </html>
