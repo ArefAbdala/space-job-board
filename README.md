@@ -14,13 +14,16 @@ A single-file, no-dependency web app. Open it in any browser or deploy to any st
 ### Features
 
 - Fetches live job data in parallel from **Greenhouse** (17 companies) and **Lever** (3 companies)
-- **Per-source graceful failure** — if a source fails, the board shows the rest with a warning banner
-- Filter by **company**, **department**, **location**, or **keyword** — all filters compose together
-- **"New" badge** on jobs posted within the last 7 days
-- **Refresh button** with last-updated timestamp
-- Jobs sorted by most recently published
-- Color-coded per company using a dynamic CSS variable system
-- Responsive dark UI
+- **Search-first layout** — big search box (press <kbd>/</kbd> to jump to it); multi-word search matches title, company, department and location
+- **Dropdown filters** for company, department and location, each with its own search box and live job counts
+- Quick toggles for **Remote** and **New this week**, plus **sort** (newest, oldest, company, title)
+- **Removable filter chips** and a one-click **Clear all**
+- **Shareable links** — search, filters and sort are kept in the URL, so reloads and shared links show the same results
+- Search and filters stay pinned while scrolling; **Show more** loads 60 jobs at a time
+- Whole job card is clickable and opens the employer's application page in a new tab
+- Phone layout: filters scroll in one row and open as bottom sheets
+- **Per-source graceful failure** — if a company can't be loaded, a dismissible notice says so and the rest still show (the technical reason is logged to the browser console)
+- Keyboard and screen-reader friendly (WCAG AA contrast, labelled controls, focus handling)
 
 ### Search engines & security
 
@@ -163,7 +166,7 @@ space-job-board/
 
 | Problem | Fix |
 |---|---|
-| Jobs don't load / source error banner | Check browser console — slug may have changed. Look up correct slug in `Space Companies - Recruiting Platforms.md` and update `SOURCES` in `app.js` |
+| Jobs don't load / "Couldn't load jobs from…" notice | Check browser console — slug may have changed. Look up correct slug in `Space Companies - Recruiting Platforms.md` and update `SOURCES` in `app.js` |
 | `python3: command not found` | Install Python 3.10+ or use the full path in your cron line |
 | API returns 404 in monitor script | Update `GREENHOUSE_API_URL` slug in `stoke_job_monitor.py` |
 | Want to re-alert on all current jobs | Run `python3 stoke_job_monitor.py --reset` |

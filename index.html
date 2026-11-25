@@ -41,80 +41,133 @@
 </head>
 <body>
 
-<header>
-  <div class="header-left">
-    <h1 class="site-title">Space Jobs</h1>
-    <div class="header-divider"></div>
-    <span class="header-subtitle" id="source-count-label">Loading…</span>
-  </div>
-  <div class="header-right">
-    <span id="last-fetched"></span>
-    <button type="button" class="refresh-btn" id="refresh-btn">↻ Refresh</button>
+<a class="skip-link" href="#results">Skip to job listings</a>
+
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a class="brand" href="/" aria-label="Space Jobs home">
+      <img src="/favicon.svg" alt="" width="28" height="28">
+      <span>Space Jobs</span>
+    </a>
+    <div class="header-right">
+      <span id="last-fetched" class="last-fetched" aria-live="polite"></span>
+      <button type="button" class="icon-btn" id="refresh-btn" aria-label="Refresh job listings" title="Refresh">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></svg>
+      </button>
+    </div>
   </div>
 </header>
 
-<p class="intro">
-  A live job board for the space industry. Openings are pulled directly from the
-  public careers pages of 20 rocket, satellite, and aerospace companies and updated
-  every time you load the page.
-</p>
+<main id="main">
 
-<noscript>
-  <p class="noscript-msg">This job board needs JavaScript to load live listings from each company's careers page.</p>
-</noscript>
-
-<div class="source-errors" id="source-errors"></div>
-
-<section class="filters">
-  <div class="filter-row">
-    <div class="filter-label">Company</div>
-    <div class="pills" id="company-pills"></div>
-  </div>
-  <div class="filter-row">
-    <div class="filter-label">Dept</div>
-    <div class="pills" id="dept-pills">
-      <button type="button" class="pill active" data-dept="all">All</button>
-    </div>
-  </div>
-  <div class="filter-row">
-    <div class="filter-label">In US</div>
-    <div class="pills" id="us-location-pills">
-      <button type="button" class="pill active" data-loc="all">All</button>
-    </div>
-  </div>
-  <div class="filter-row">
-    <div class="filter-label">Outside US</div>
-    <div class="pills" id="intl-location-pills"></div>
-  </div>
-  <div class="filter-row">
-    <div class="filter-label">Keywords</div>
-    <input class="search-input" id="keyword-input" type="search" aria-label="Filter jobs by keyword"
-      placeholder="title, skill, keyword…" autocomplete="off">
+<section class="hero">
+  <div class="wrap">
+    <h1>Find your next job in space</h1>
+    <p class="hero-sub">
+      Live openings from 20 rocket, satellite and aerospace companies, pulled straight
+      from their careers pages every time you visit.
+    </p>
+    <p class="stats" id="stats" aria-live="polite">Loading the latest openings…</p>
   </div>
 </section>
 
-<main>
-  <div class="results-bar" id="results-bar"></div>
-  <div id="job-container">
-    <div class="state-msg">
-      <div class="spinner"></div>
-      Loading jobs from multiple sources…
+<div class="toolbar" id="toolbar">
+  <div class="wrap">
+    <form class="search" id="search-form" role="search">
+      <svg class="search-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="search" type="search" placeholder="Search title, company, skill or city" aria-label="Search jobs" autocomplete="off" enterkeyhint="search">
+      <kbd class="kbd-hint" aria-hidden="true">/</kbd>
+      <button type="button" class="search-clear" id="search-clear" aria-label="Clear search" hidden>×</button>
+      <button type="submit" class="sr-only">Search</button>
+    </form>
+
+    <div class="filter-bar">
+      <div class="dd" data-facet="company">
+        <button type="button" class="dd-btn" aria-expanded="false" aria-controls="dd-company">Company <span class="dd-badge" hidden></span><svg class="caret" viewBox="0 0 12 12" aria-hidden="true"><path d="m3 4.5 3 3 3-3"/></svg></button>
+        <div class="dd-panel" id="dd-company" role="group" aria-label="Filter by company" hidden>
+          <input type="search" class="dd-search" placeholder="Search companies" aria-label="Search companies" autocomplete="off">
+          <div class="dd-list"></div>
+          <p class="dd-nomatch" hidden>No matches</p>
+          <div class="dd-foot"><button type="button" class="link-btn dd-clear">Clear</button><button type="button" class="btn-primary dd-done">Done</button></div>
+        </div>
+      </div>
+      <div class="dd" data-facet="dept">
+        <button type="button" class="dd-btn" aria-expanded="false" aria-controls="dd-dept">Department <span class="dd-badge" hidden></span><svg class="caret" viewBox="0 0 12 12" aria-hidden="true"><path d="m3 4.5 3 3 3-3"/></svg></button>
+        <div class="dd-panel" id="dd-dept" role="group" aria-label="Filter by department" hidden>
+          <input type="search" class="dd-search" placeholder="Search departments" aria-label="Search departments" autocomplete="off">
+          <div class="dd-list"></div>
+          <p class="dd-nomatch" hidden>No matches</p>
+          <div class="dd-foot"><button type="button" class="link-btn dd-clear">Clear</button><button type="button" class="btn-primary dd-done">Done</button></div>
+        </div>
+      </div>
+      <div class="dd" data-facet="loc">
+        <button type="button" class="dd-btn" aria-expanded="false" aria-controls="dd-loc">Location <span class="dd-badge" hidden></span><svg class="caret" viewBox="0 0 12 12" aria-hidden="true"><path d="m3 4.5 3 3 3-3"/></svg></button>
+        <div class="dd-panel" id="dd-loc" role="group" aria-label="Filter by location" hidden>
+          <input type="search" class="dd-search" placeholder="Search cities, states, countries" aria-label="Search locations" autocomplete="off">
+          <div class="dd-list"></div>
+          <p class="dd-nomatch" hidden>No matches</p>
+          <div class="dd-foot"><button type="button" class="link-btn dd-clear">Clear</button><button type="button" class="btn-primary dd-done">Done</button></div>
+        </div>
+      </div>
+
+      <button type="button" class="toggle" id="toggle-remote" aria-pressed="false">Remote</button>
+      <button type="button" class="toggle" id="toggle-new" aria-pressed="false">New this week</button>
+
+      <label class="sort">
+        <span>Sort</span>
+        <select id="sort" aria-label="Sort jobs">
+          <option value="newest">Newest first</option>
+          <option value="oldest">Oldest first</option>
+          <option value="company">Company A–Z</option>
+          <option value="title">Job title A–Z</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="active-filters" id="active-filters" hidden>
+      <div class="chip-list" id="chip-list"></div>
+      <button type="button" class="link-btn" id="clear-all">Clear all</button>
     </div>
   </div>
+</div>
+<div class="dd-backdrop" id="dd-backdrop"></div>
+
+<div id="results" class="wrap results" tabindex="-1">
+  <h2 class="sr-only">Job listings</h2>
+  <div class="notice" id="notice" role="status" hidden>
+    <span id="notice-text"></span>
+    <button type="button" class="notice-close" id="notice-close" aria-label="Dismiss">×</button>
+  </div>
+
+  <p class="result-count" id="result-count" aria-live="polite"></p>
+
+  <noscript>
+    <p class="noscript-msg">This job board needs JavaScript to load live listings from each company's careers page.</p>
+  </noscript>
+
+  <div id="job-container"></div>
+
+  <div class="more-wrap" id="more-wrap" hidden>
+    <p class="more-note" id="more-note"></p>
+    <button type="button" class="btn-secondary" id="more-btn">Show more</button>
+  </div>
+</div>
+
 </main>
 
 <footer class="site-footer">
-  <h2>Companies covered</h2>
-  <ul>
-    <li>Stoke Space</li><li>SpaceX</li><li>Relativity Space</li><li>Rocket Lab</li>
-    <li>Inversion Space</li><li>Varda Space</li><li>Vast Space</li><li>Astranis</li>
-    <li>Muon Space</li><li>Albedo</li><li>True Anomaly</li><li>Ursa Major</li>
-    <li>AST SpaceMobile</li><li>Anduril</li><li>Voyager Technologies</li><li>Planet Labs</li>
-    <li>BlackSky</li><li>Hermeus</li><li>CesiumAstro</li><li>Venus Aerospace</li>
-  </ul>
-  <p>Listings link to each employer's official application page. Not affiliated with any listed company.</p>
+  <div class="wrap">
+    <h2>Companies covered</h2>
+    <ul>
+      <li>Stoke Space</li><li>SpaceX</li><li>Relativity Space</li><li>Rocket Lab</li>
+      <li>Inversion Space</li><li>Varda Space</li><li>Vast Space</li><li>Astranis</li>
+      <li>Muon Space</li><li>Albedo</li><li>True Anomaly</li><li>Ursa Major</li>
+      <li>AST SpaceMobile</li><li>Anduril</li><li>Voyager Technologies</li><li>Planet Labs</li>
+      <li>BlackSky</li><li>Hermeus</li><li>CesiumAstro</li><li>Venus Aerospace</li>
+    </ul>
+    <p>Every listing links to the employer's official application page. Space Jobs isn't affiliated with any listed company.</p>
+  </div>
 </footer>
 
 </body>
 </html>
-

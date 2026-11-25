@@ -26,27 +26,6 @@ const SOURCES = [
   { name: 'Venus Aerospace',       slug: 'venusaero',              api: 'lever',      color: '#ea80fc' },
 ];
 
-const MAX_DISPLAY = 500;
-const NEW_THRESHOLD_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
-
-let allJobs = [];
-let activeCompanies = new Set();
-let activeDepts     = new Set();
-let activeLocations = new Set();
-let sourceErrors    = {};
-let lastFetched     = null;
-let lastFetchedInterval = null;
-
-// ── Color utility ─────────────────────────────────────────────────────────
-function isLightColor(hex) {
-  // True when dark text (#0a0c10) has better WCAG contrast on this colour than white.
-  const lin = c => { c /= 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
-  const L = 0.2126 * lin(parseInt(hex.slice(1,3), 16))
-          + 0.7152 * lin(parseInt(hex.slice(3,5), 16))
-          + 0.0722 * lin(parseInt(hex.slice(5,7), 16));
-  const DARK_L = 0.0037; // luminance of #0a0c10
-  return (L + 0.05) / (DARK_L + 0.05) > 1.05 / (L + 0.05);
-}
 
 // ── Normalize API responses to common shape ───────────────────────────────
 function normalizeGreenhouse(data, source) {
@@ -95,170 +74,8 @@ async function fetchSource(source) {
     : normalizeLever(data, source);
 }
 
-async function loadJobs() {
-  setLoading(true);
-  sourceErrors = {};
-  activeCompanies.clear();
-  activeDepts.clear();
-  activeLocations.clear();
 
-  const results = await Promise.allSettled(SOURCES.map(s => fetchSource(s)));
-
-  allJobs = [];
-  for (let i = 0; i < results.length; i++) {
-    if (results[i].status === 'fulfilled') {
-      allJobs.push(...results[i].value);
-    } else {
-      sourceErrors[SOURCES[i].name] = results[i].reason?.message || 'Unknown error';
-    }
-  }
-
-  // Sort newest first; mark jobs < 7 days old
-  const now = Date.now();
-  allJobs.sort((a, b) => new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0));
-  allJobs.forEach(j => { j.isNew = !!(j.publishedAt && now - new Date(j.publishedAt) < NEW_THRESHOLD_MS); });
-
-  // Pre-compute expensive per-job data once so render() and filterJobs() are cheap
-  allJobs.forEach(j => {
-    j._locParts = splitLocations(j.location).map(l => normalizeLocation(l));
-    const newBadge = j.isNew ? `<span class="new-badge">New</span>` : '';
-    const deptHtml = j.department ? `<div class="job-dept">${escHtml(j.department)}</div>` : '';
-    j._cardInner = `
-      <div class="card-header">
-        <div class="card-header-left">
-          <div class="job-title">${escHtml(j.title)}</div>
-          ${newBadge}
-        </div>
-        <span class="company-badge">${escHtml(j._company)}</span>
-      </div>
-      <div class="job-meta">
-        <div class="job-location">${escHtml(j.location || 'Location TBD')}</div>
-        ${deptHtml}
-      </div>
-      <div class="job-dates">${renderDates(j)}</div>
-      <div class="job-card-footer">
-        ${j.url ? `<a class="view-btn" href="${escHtml(j.url)}" target="_blank" rel="noopener noreferrer">
-          View Job &rarr;
-        </a>` : ''}
-      </div>`;
-  });
-
-  lastFetched = new Date();
-  clearInterval(lastFetchedInterval);
-  lastFetchedInterval = setInterval(updateLastFetchedDisplay, 60000);
-  updateLastFetchedDisplay();
-
-  updateSourceCountLabel();
-  buildCompanyPills();
-  buildDeptPills();
-  buildUSLocationPills();
-  buildIntlLocationPills();
-  renderSourceErrors();
-  setLoading(false);
-  render();
-}
-
-// ── Loading state ─────────────────────────────────────────────────────────
-function setLoading(on) {
-  const btn = document.getElementById('refresh-btn');
-  if (on) {
-    document.getElementById('job-container').innerHTML =
-      `<div class="state-msg"><div class="spinner"></div>Loading from ${SOURCES.length} sources…</div>`;
-    btn.disabled = true;
-    btn.textContent = '↻ Loading…';
-  } else {
-    btn.disabled = false;
-    btn.textContent = '↻ Refresh';
-  }
-}
-
-// ── Last-fetched display ──────────────────────────────────────────────────
-function updateLastFetchedDisplay() {
-  const el = document.getElementById('last-fetched');
-  if (!lastFetched) { el.textContent = ''; return; }
-  const sec = Math.floor((Date.now() - lastFetched) / 1000);
-  if (sec < 10)        el.textContent = 'Updated just now';
-  else if (sec < 60)   el.textContent = `Updated ${sec}s ago`;
-  else if (sec < 3600) el.textContent = `Updated ${Math.floor(sec/60)}m ago`;
-  else                 el.textContent = `Updated ${Math.floor(sec/3600)}h ago`;
-}
-
-function updateSourceCountLabel() {
-  const ok = SOURCES.length - Object.keys(sourceErrors).length;
-  document.getElementById('source-count-label').textContent =
-    `${ok} of ${SOURCES.length} sources · ${allJobs.length.toLocaleString()} jobs`;
-}
-
-// ── Source errors banner ──────────────────────────────────────────────────
-function renderSourceErrors() {
-  const el = document.getElementById('source-errors');
-  const names = Object.keys(sourceErrors);
-  if (!names.length) { el.classList.remove('visible'); return; }
-  el.classList.add('visible');
-  el.textContent =
-    `⚠ ${names.length} source${names.length > 1 ? 's' : ''} failed to load: ${names.join(', ')}` +
-    ` — slugs may have changed. Check the Recruiting Platforms doc.`;
-}
-
-// ── Pill factory ──────────────────────────────────────────────────────────
-function makePill(text, attrs = {}, active = false) {
-  const btn = document.createElement('button');
-  btn.type = 'button';
-  btn.className = 'pill' + (active ? ' active' : '');
-  btn.textContent = text;
-  for (const [k, v] of Object.entries(attrs)) btn.setAttribute(k, v);
-  return btn;
-}
-
-// ── Company pills ─────────────────────────────────────────────────────────
-function buildCompanyPills() {
-  const container = document.getElementById('company-pills');
-  container.innerHTML = '';
-
-  const allBtn = makePill('All', { 'data-company': 'all' }, true);
-  allBtn.addEventListener('click', () => resetFilter('company'));
-  container.appendChild(allBtn);
-
-  for (const src of SOURCES) {
-    const failed = !!sourceErrors[src.name];
-    const btn = makePill(failed ? `${src.name} ⚠` : src.name, { 'data-company': src.name });
-    btn.style.setProperty('--pill-color', src.color);
-    btn.style.setProperty('--pill-text-color', isLightColor(src.color) ? '#0a0c10' : '#fff');
-    if (failed) { btn.disabled = true; btn.title = `Failed: ${sourceErrors[src.name]}`; }
-    btn.addEventListener('click', () => toggleSet(activeCompanies, src.name, btn, 'company'));
-    container.appendChild(btn);
-  }
-}
-
-// ── Department pills ──────────────────────────────────────────────────────
-function buildDeptPills() {
-  const container = document.getElementById('dept-pills');
-  container.innerHTML = '';
-
-  const allBtn = makePill('All', { 'data-dept': 'all' }, true);
-  allBtn.addEventListener('click', () => resetFilter('dept'));
-  container.appendChild(allBtn);
-
-  // Count dept occurrences, only show those with > 1 job
-  const counts = {};
-  for (const job of allJobs) {
-    (job.department || '').split(',').forEach(d => {
-      const t = d.trim();
-      if (t) counts[t] = (counts[t] || 0) + 1;
-    });
-  }
-
-  Object.entries(counts)
-    .filter(([, n]) => n > 1)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .forEach(([dept]) => {
-      const btn = makePill(dept, { 'data-dept': dept });
-      btn.addEventListener('click', () => toggleSet(activeDepts, dept, btn, 'dept'));
-      container.appendChild(btn);
-    });
-}
-
-// ── Location normalization & pills ────────────────────────────────────────
+// ── Location normalization ───────────────────────────────────────────────
 
 // State/region group filters. Sentinel values start with "~" to distinguish
 // them from individual normalized location strings in activeLocations.
@@ -417,123 +234,6 @@ function isUSLocation(loc) {
   return false;
 }
 
-function buildUSLocationPills() {
-  const container = document.getElementById('us-location-pills');
-  container.innerHTML = '';
-
-  const allBtn = makePill('All', { 'data-loc': 'all' }, true);
-  allBtn.addEventListener('click', () => resetFilter('loc'));
-  container.appendChild(allBtn);
-
-  // Collect US-only normalized locations
-  const locs = new Set();
-  for (const job of allJobs) {
-    for (const t of job._locParts) {
-      if (t && isUSLocation(t)) locs.add(t);
-    }
-  }
-
-  // State group pills
-  let addedGroups = 0;
-  for (const grp of LOC_STATE_GROUPS.filter(g => g.sentinel !== '~INTL')) {
-    if ([...locs].some(l => grp.test(l))) {
-      const btn = makePill(grp.label, { 'data-loc': grp.sentinel });
-      btn.addEventListener('click', () => toggleSet(activeLocations, grp.sentinel, btn, 'loc'));
-      container.appendChild(btn);
-      addedGroups++;
-    }
-  }
-
-  if (addedGroups > 0) {
-    const sep = document.createElement('span');
-    sep.className = 'pill-sep';
-    container.appendChild(sep);
-  }
-
-  // Individual US city pills
-  [...locs].sort((a, b) => {
-    const stA = (a.match(/,\s*([A-Z]{2})$/) || [])[1] || '';
-    const stB = (b.match(/,\s*([A-Z]{2})$/) || [])[1] || '';
-    if (a === 'Remote' && b !== 'Remote') return 1;
-    if (b === 'Remote' && a !== 'Remote') return -1;
-    if (stA && !stB) return -1;
-    if (stB && !stA) return 1;
-    if (stA !== stB) return stA.localeCompare(stB);
-    return a.localeCompare(b);
-  }).forEach(loc => {
-    const btn = makePill(loc, { 'data-loc': loc });
-    btn.addEventListener('click', () => toggleSet(activeLocations, loc, btn, 'loc'));
-    container.appendChild(btn);
-  });
-}
-
-function buildIntlLocationPills() {
-  const container = document.getElementById('intl-location-pills');
-  container.innerHTML = '';
-
-  // Collect non-US normalized locations
-  const locs = new Set();
-  for (const job of allJobs) {
-    for (const t of job._locParts) {
-      if (t && !isUSLocation(t)) locs.add(t);
-    }
-  }
-
-  if (locs.size === 0) {
-    container.innerHTML = '<span class="pills-empty">None in current results</span>';
-    return;
-  }
-
-  [...locs].sort((a, b) => a.localeCompare(b)).forEach(loc => {
-    const btn = makePill(loc, { 'data-loc': loc });
-    btn.addEventListener('click', () => toggleSet(activeLocations, loc, btn, 'loc'));
-    container.appendChild(btn);
-  });
-}
-
-// ── Filter toggle / reset ─────────────────────────────────────────────────
-function toggleSet(set, value, btn, type) {
-  if (set.has(value)) { set.delete(value); btn.classList.remove('active'); }
-  else                { set.add(value);    btn.classList.add('active'); }
-  document.querySelectorAll(`[data-${type}="all"]`).forEach(p => p.classList.toggle('active', set.size === 0));
-  render();
-}
-
-function resetFilter(type) {
-  const set = type === 'company' ? activeCompanies : type === 'dept' ? activeDepts : activeLocations;
-  set.clear();
-  document.querySelectorAll(`[data-${type}]`).forEach(p => p.classList.remove('active'));
-  document.querySelectorAll(`[data-${type}="all"]`).forEach(p => p.classList.add('active'));
-  render();
-}
-
-// ── Filter jobs ───────────────────────────────────────────────────────────
-function filterJobs() {
-  const kw = document.getElementById('keyword-input').value.trim().toLowerCase();
-  return allJobs.filter(job => {
-    if (activeCompanies.size > 0 && !activeCompanies.has(job._company)) return false;
-    if (activeDepts.size > 0) {
-      const jobDepts = (job.department || '').split(',').map(d => d.trim());
-      if (![...activeDepts].some(d => jobDepts.includes(d))) return false;
-    }
-    if (activeLocations.size > 0) {
-      const parts = job._locParts;
-      let matches = false;
-      for (const al of activeLocations) {
-        if (al.startsWith('~')) {
-          const grp = LOC_STATE_GROUPS.find(g => g.sentinel === al);
-          if (grp && parts.some(p => grp.test(p))) { matches = true; break; }
-        } else if (parts.includes(al)) { matches = true; break; }
-      }
-      if (!matches) return false;
-    }
-    if (kw) {
-      const haystack = `${job.title} ${job.department} ${job.location}`.toLowerCase();
-      if (!haystack.includes(kw)) return false;
-    }
-    return true;
-  });
-}
 
 // ── Date formatting ───────────────────────────────────────────────────────
 function fmtDate(iso) {
@@ -550,66 +250,6 @@ function timeAgo(iso) {
   if (sec < 86400*30)    return `${Math.floor(sec/86400)}d ago`;
   if (sec < 86400*365)   return `${Math.floor(sec/(86400*30))}mo ago`;
   return `${Math.floor(sec/(86400*365))}y ago`;
-}
-
-function renderDates(job) {
-  const pub = job.publishedAt, upd = job.updatedAt;
-  const sameDay = pub && upd && pub.slice(0,10) === upd.slice(0,10);
-  if (sameDay || !upd || upd === pub) {
-    return `<div class="job-published">⬡ ${fmtDate(pub)} <span class="time-ago">(${timeAgo(pub)})</span></div>`;
-  }
-  return `
-    <div class="job-published">⬡ Published ${fmtDate(pub)} <span class="time-ago">(${timeAgo(pub)})</span></div>
-    <div class="job-updated">Updated ${fmtDate(upd)} <span class="time-ago">(${timeAgo(upd)})</span></div>`;
-}
-
-// ── Render ────────────────────────────────────────────────────────────────
-function render() {
-  const filtered = filterJobs();
-  const container = document.getElementById('job-container');
-  const bar       = document.getElementById('results-bar');
-
-  // Results bar
-  const total = filtered.length;
-  let barHtml = `<strong>${total.toLocaleString()}</strong> job${total !== 1 ? 's' : ''}`;
-  if (total > MAX_DISPLAY) {
-    barHtml += ` <span class="truncation-note">(showing first ${MAX_DISPLAY} — use filters to narrow)</span>`;
-  }
-  if (activeCompanies.size > 0 && activeCompanies.size <= 5) {
-    const counts = {};
-    filtered.forEach(j => { counts[j._company] = (counts[j._company] || 0) + 1; });
-    const breakdown = [...activeCompanies].map(c => `${counts[c] || 0} ${c}`).join(' · ');
-    barHtml += `&nbsp; <span class="bar-sep">|</span> &nbsp;${escHtml(breakdown)}`;
-  }
-  bar.innerHTML = barHtml;
-
-  if (total === 0) {
-    container.innerHTML = `<div class="state-msg"><span class="icon">🔭</span>No jobs match your filters.</div>`;
-    return;
-  }
-
-  const grid = document.createElement('div');
-  grid.className = 'job-grid';
-
-  const limit = Math.min(total, MAX_DISPLAY);
-  for (let i = 0; i < limit; i++) {
-    const job = filtered[i];
-    const card = document.createElement('div');
-    card.className = 'job-card';
-    card.style.setProperty('--company-color', job._color);
-    card.innerHTML = job._cardInner;
-    grid.appendChild(card);
-  }
-
-  container.innerHTML = '';
-  container.appendChild(grid);
-
-  if (total > MAX_DISPLAY) {
-    const note = document.createElement('div');
-    note.className = 'truncation-bar';
-    note.textContent = `${(total - MAX_DISPLAY).toLocaleString()} more results — refine your filters to see them`;
-    container.appendChild(note);
-  }
 }
 
 function escHtml(s) {
@@ -630,13 +270,559 @@ function safeUrl(raw) {
   }
 }
 
-// ── Debounced keyword search ──────────────────────────────────────────────
-let debounceTimer;
-document.getElementById('keyword-input').addEventListener('input', () => {
-  clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(render, 200);
+
+// ── UI state ──────────────────────────────────────────────────────────────
+const PAGE_SIZE = 60;
+const NEW_THRESHOLD_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const SORTS = {
+  newest:  (a, b) => b._ts - a._ts,
+  oldest:  (a, b) => a._ts - b._ts,
+  company: (a, b) => a._company.localeCompare(b._company) || b._ts - a._ts,
+  title:   (a, b) => a.title.localeCompare(b.title) || b._ts - a._ts,
+};
+
+const state = {
+  q: '',
+  newOnly: false,
+  sort: 'newest',
+  shown: PAGE_SIZE,
+  sets: { company: new Set(), dept: new Set(), loc: new Set() },
+};
+
+// Filter dropdowns. `param` is the URL query parameter used for sharing links.
+const FACETS = {
+  company: { param: 'company',  options: [] },
+  dept:    { param: 'dept',     options: [] },
+  loc:     { param: 'location', options: [] },
+};
+
+let allJobs = [];
+let sourceErrors = {};
+let lastFetched = null;
+let lastFetchedTimer = null;
+let loading = false;
+
+const $ = id => document.getElementById(id);
+const LOC_GROUP = Object.fromEntries(LOC_STATE_GROUPS.map(g => [g.sentinel, g]));
+
+// ── Fetch & prepare jobs ──────────────────────────────────────────────────
+async function loadJobs() {
+  if (loading) return;
+  loading = true;
+  setRefreshing(true);
+  showSkeleton();
+
+  const results = await Promise.allSettled(SOURCES.map(s => fetchSource(s)));
+
+  allJobs = [];
+  sourceErrors = {};
+  results.forEach((r, i) => {
+    if (r.status === 'fulfilled') {
+      allJobs.push(...r.value);
+    } else {
+      sourceErrors[SOURCES[i].name] = r.reason?.message || 'Unknown error';
+      // Developer hint: a failing source usually means its ATS slug changed.
+      console.warn(`[jobs] ${SOURCES[i].name} (${SOURCES[i].api}/${SOURCES[i].slug}) failed:`, sourceErrors[SOURCES[i].name]);
+    }
+  });
+
+  const now = Date.now();
+  for (const j of allJobs) {
+    j._ts       = Date.parse(j.publishedAt) || 0;
+    j.isNew     = !!(j._ts && now - j._ts < NEW_THRESHOLD_MS);
+    j._locParts = splitLocations(j.location).map(l => normalizeLocation(l));
+    j._depts    = (j.department || '').split(',').map(d => d.trim()).filter(Boolean);
+    j._hay      = `${j.title} ${j._company} ${j.department} ${j.location}`.toLowerCase();
+    j._cardHtml = cardHtml(j);
+  }
+
+  lastFetched = new Date();
+  clearInterval(lastFetchedTimer);
+  lastFetchedTimer = setInterval(updateLastFetched, 30000);
+  updateLastFetched();
+
+  buildFacetOptions();
+  sanitizeState();
+  renderStats();
+  renderNotice();
+  loading = false;
+  setRefreshing(false);
+
+  if (!allJobs.length) { showLoadError(); return; }
+  render();
+}
+
+function cardHtml(j) {
+  const title = escHtml(j.title || 'Untitled role');
+  const titleHtml = j.url
+    ? `<a class="job-link" href="${escHtml(j.url)}" target="_blank" rel="noopener noreferrer">${title}<span class="sr-only"> at ${escHtml(j._company)} (opens in a new tab)</span></a>`
+    : title;
+  const posted = j._ts
+    ? `<span class="posted" title="${escHtml(fmtDate(j.publishedAt))}">Posted ${escHtml(timeAgo(j.publishedAt))}</span>`
+    : `<span class="posted">Date not listed</span>`;
+  const dept = j.department
+    ? `<li><svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 5h12v8H2zM6 5V3h4v2"/></svg><span>${escHtml(j.department)}</span></li>`
+    : '';
+  return `
+    <div class="card-top">
+      <span class="company"><span class="dot" aria-hidden="true"></span>${escHtml(j._company)}</span>
+      ${j.isNew ? '<span class="new-badge">New</span>' : ''}
+    </div>
+    <h3 class="job-title">${titleHtml}</h3>
+    <ul class="job-meta">
+      <li><svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 15s5-4.6 5-8.5A5 5 0 0 0 3 6.5C3 10.4 8 15 8 15z"/><circle cx="8" cy="6.5" r="1.8"/></svg><span>${escHtml(j.location || 'Location not listed')}</span></li>
+      ${dept}
+    </ul>
+    <div class="card-foot">
+      ${posted}
+      ${j.url ? '<span class="apply" aria-hidden="true">View &amp; apply&nbsp;↗</span>' : ''}
+    </div>`;
+}
+
+// ── Filtering ─────────────────────────────────────────────────────────────
+function matchesFacet(job, key) {
+  const set = state.sets[key];
+  if (!set.size) return true;
+  if (key === 'company') return set.has(job._company);
+  if (key === 'dept')    return job._depts.some(d => set.has(d));
+  for (const v of set) {
+    if (v.startsWith('~')) {
+      const g = LOC_GROUP[v];
+      if (g && job._locParts.some(p => g.test(p))) return true;
+    } else if (job._locParts.includes(v)) return true;
+  }
+  return false;
+}
+
+function queryTerms() {
+  return state.q.toLowerCase().split(/\s+/).filter(Boolean);
+}
+
+// `except` skips one facet — used to compute "how many jobs would this option give".
+function jobMatches(job, terms, except = null) {
+  if (state.newOnly && !job.isNew) return false;
+  for (const key of Object.keys(FACETS)) {
+    if (key !== except && !matchesFacet(job, key)) return false;
+  }
+  return terms.every(t => job._hay.includes(t));
+}
+
+function facetValues(job, key) {
+  if (key === 'company') return [job._company];
+  if (key === 'dept') return job._depts;
+  const vals = new Set(job._locParts.filter(Boolean));
+  for (const g of LOC_STATE_GROUPS) if (job._locParts.some(p => g.test(p))) vals.add(g.sentinel);
+  return vals;
+}
+
+// ── Facet dropdowns ───────────────────────────────────────────────────────
+function buildFacetOptions() {
+  // Company
+  FACETS.company.options = [...SOURCES]
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map(s => ({ value: s.name, label: s.name, color: s.color, disabled: !!sourceErrors[s.name] }));
+
+  // Department
+  const depts = new Set();
+  allJobs.forEach(j => j._depts.forEach(d => depts.add(d)));
+  FACETS.dept.options = [...depts].sort((a, b) => a.localeCompare(b)).map(d => ({ value: d, label: d }));
+
+  // Location: state groups, US places, then international
+  const us = new Set(), intl = new Set();
+  allJobs.forEach(j => j._locParts.forEach(l => { if (l) (isUSLocation(l) ? us : intl).add(l); }));
+  const usSorted = [...us].sort((a, b) => (a === 'Remote' ? -1 : b === 'Remote' ? 1 : a.localeCompare(b)));
+  FACETS.loc.options = [
+    ...LOC_STATE_GROUPS.filter(g => [...us].some(l => g.test(l)))
+      .map(g => ({ value: g.sentinel, label: `${g.label} (all)`, section: 'US states' })),
+    ...usSorted.map(l => ({ value: l, label: l, section: 'United States' })),
+    ...[...intl].sort((a, b) => a.localeCompare(b)).map(l => ({ value: l, label: l, section: 'Outside the US' })),
+  ];
+
+  for (const key of Object.keys(FACETS)) renderFacetList(key);
+  $('toggle-remote').disabled = !FACETS.loc.options.some(o => o.value === 'Remote');
+}
+
+function renderFacetList(key) {
+  const list = document.querySelector(`.dd[data-facet="${key}"] .dd-list`);
+  list.textContent = '';
+  let section = null;
+  for (const opt of FACETS[key].options) {
+    if (opt.section && opt.section !== section) {
+      section = opt.section;
+      const h = document.createElement('div');
+      h.className = 'opt-section';
+      h.textContent = section;
+      list.appendChild(h);
+    }
+    const label = document.createElement('label');
+    label.className = 'opt';
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.value = opt.value;
+    input.disabled = !!opt.disabled;
+    input.addEventListener('change', () => toggleValue(key, opt.value, input.checked));
+    label.appendChild(input);
+    if (opt.color) {
+      const dot = document.createElement('span');
+      dot.className = 'dot';
+      dot.style.setProperty('--dot', opt.color);
+      label.appendChild(dot);
+    }
+    const name = document.createElement('span');
+    name.className = 'opt-name';
+    name.textContent = opt.label;
+    const count = document.createElement('span');
+    count.className = 'opt-count';
+    if (opt.disabled) count.textContent = 'unavailable';
+    label.append(name, count);
+    list.appendChild(label);
+    Object.assign(opt, { el: label, input, countEl: count, search: opt.label.toLowerCase() });
+  }
+  if (!FACETS[key].options.length) {
+    const empty = document.createElement('div');
+    empty.className = 'opt-empty';
+    empty.textContent = 'Nothing to filter yet';
+    list.appendChild(empty);
+  }
+}
+
+function updateFacetCounts(terms) {
+  for (const key of Object.keys(FACETS)) {
+    const counts = new Map();
+    for (const job of allJobs) {
+      if (!jobMatches(job, terms, key)) continue;
+      for (const v of facetValues(job, key)) counts.set(v, (counts.get(v) || 0) + 1);
+    }
+    const set = state.sets[key];
+    for (const opt of FACETS[key].options) {
+      if (!opt.el) continue;
+      const n = counts.get(opt.value) || 0;
+      opt.input.checked = set.has(opt.value);
+      if (!opt.disabled) opt.countEl.textContent = n.toLocaleString();
+      opt.el.classList.toggle('zero', n === 0 && !set.has(opt.value));
+    }
+    const badge = document.querySelector(`.dd[data-facet="${key}"] .dd-badge`);
+    badge.textContent = set.size;
+    badge.hidden = set.size === 0;
+  }
+}
+
+function filterOptionList(key, text) {
+  const t = text.trim().toLowerCase();
+  const dd = document.querySelector(`.dd[data-facet="${key}"]`);
+  let visible = 0;
+  for (const opt of FACETS[key].options) {
+    if (!opt.el) continue;
+    const show = !t || opt.search.includes(t);
+    opt.el.hidden = !show;
+    if (show) visible++;
+  }
+  // Hide section headings with nothing under them
+  dd.querySelectorAll('.opt-section').forEach(h => {
+    let n = h.nextElementSibling, any = false;
+    while (n && !n.classList.contains('opt-section')) { if (!n.hidden) any = true; n = n.nextElementSibling; }
+    h.hidden = !any;
+  });
+  dd.querySelector('.dd-nomatch').hidden = visible > 0 || !FACETS[key].options.length;
+}
+
+function openDropdown(dd) {
+  closeDropdowns(dd);
+  dd.querySelector('.dd-panel').hidden = false;
+  dd.querySelector('.dd-btn').setAttribute('aria-expanded', 'true');
+  document.body.classList.add('dd-open');
+  if (matchMedia('(pointer: fine)').matches) dd.querySelector('.dd-search').focus();
+}
+
+function closeDropdowns(except = null) {
+  document.querySelectorAll('.dd').forEach(dd => {
+    if (dd === except) return;
+    const panel = dd.querySelector('.dd-panel');
+    if (panel.hidden) return;
+    panel.hidden = true;
+    dd.querySelector('.dd-btn').setAttribute('aria-expanded', 'false');
+    const search = dd.querySelector('.dd-search');
+    search.value = '';
+    filterOptionList(dd.dataset.facet, '');
+  });
+  if (!except) document.body.classList.remove('dd-open');
+}
+
+// ── State changes ─────────────────────────────────────────────────────────
+function changed() {
+  state.shown = PAGE_SIZE;
+  render();
+}
+
+function toggleValue(key, value, on) {
+  if (on) state.sets[key].add(value); else state.sets[key].delete(value);
+  changed();
+}
+
+function clearAll() {
+  state.q = '';
+  $('search').value = '';
+  state.newOnly = false;
+  Object.values(state.sets).forEach(s => s.clear());
+  changed();
+}
+
+// ── URL sync (shareable, survives reload) ─────────────────────────────────
+function readUrl() {
+  const p = new URLSearchParams(location.search);
+  state.q = (p.get('q') || '').slice(0, 200);
+  state.newOnly = p.get('new') === '1';
+  state.sort = SORTS[p.get('sort')] ? p.get('sort') : 'newest';
+  for (const [key, f] of Object.entries(FACETS)) {
+    state.sets[key] = new Set(p.getAll(f.param).slice(0, 100));
+  }
+  $('search').value = state.q;
+  $('sort').value = state.sort;
+}
+
+function writeUrl() {
+  const p = new URLSearchParams();
+  if (state.q) p.set('q', state.q);
+  if (state.newOnly) p.set('new', '1');
+  if (state.sort !== 'newest') p.set('sort', state.sort);
+  for (const [key, f] of Object.entries(FACETS)) state.sets[key].forEach(v => p.append(f.param, v));
+  const qs = p.toString();
+  const url = location.pathname + (qs ? `?${qs}` : '');
+  if (url !== location.pathname + location.search) history.replaceState(null, '', url);
+}
+
+// Drop filter values from the URL that don't exist in the loaded data.
+function sanitizeState() {
+  for (const key of Object.keys(FACETS)) {
+    const valid = new Set(FACETS[key].options.filter(o => !o.disabled).map(o => o.value));
+    for (const v of [...state.sets[key]]) if (!valid.has(v)) state.sets[key].delete(v);
+  }
+}
+
+// ── Rendering ─────────────────────────────────────────────────────────────
+function render() {
+  const terms = queryTerms();
+  const filtered = allJobs.filter(j => jobMatches(j, terms));
+  filtered.sort(SORTS[state.sort]);
+
+  updateFacetCounts(terms);
+  renderControls();
+  renderChips();
+  writeUrl();
+
+  const total = filtered.length;
+  $('result-count').textContent = loading ? '' :
+    `${total.toLocaleString()} ${total === 1 ? 'job' : 'jobs'}${hasFilters() ? ' match your filters' : ''}`;
+
+  const container = $('job-container');
+  container.textContent = '';
+  $('more-wrap').hidden = true;
+
+  if (!total) {
+    container.appendChild(stateMessage(
+      'No jobs match your filters',
+      'Try removing a filter or searching for something broader.',
+      hasFilters() ? { label: 'Clear all filters', onClick: clearAll } : null));
+    return;
+  }
+
+  const grid = document.createElement('div');
+  grid.className = 'job-grid';
+  const limit = Math.min(total, state.shown);
+  for (let i = 0; i < limit; i++) {
+    const job = filtered[i];
+    const card = document.createElement('article');
+    card.className = 'job-card' + (job.url ? ' clickable' : '');
+    card.style.setProperty('--company-color', job._color);
+    card.innerHTML = job._cardHtml;
+    grid.appendChild(card);
+  }
+  container.appendChild(grid);
+
+  if (total > limit) {
+    const remaining = total - limit;
+    $('more-btn').textContent = `Show ${Math.min(PAGE_SIZE, remaining)} more`;
+    $('more-note').textContent = `Showing ${limit.toLocaleString()} of ${total.toLocaleString()}`;
+    $('more-wrap').hidden = false;
+  }
+}
+
+function hasFilters() {
+  return !!state.q.trim() || state.newOnly || Object.values(state.sets).some(s => s.size);
+}
+
+function renderControls() {
+  $('toggle-new').setAttribute('aria-pressed', String(state.newOnly));
+  $('toggle-remote').setAttribute('aria-pressed', String(state.sets.loc.has('Remote')));
+  $('search-clear').hidden = !state.q;
+}
+
+function renderChips() {
+  const wrap = $('active-filters');
+  const list = $('chip-list');
+  list.textContent = '';
+  const add = (text, remove) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'chip';
+    b.setAttribute('aria-label', `Remove filter: ${text}`);
+    b.textContent = text;
+    const x = document.createElement('span');
+    x.className = 'chip-x';
+    x.setAttribute('aria-hidden', 'true');
+    x.textContent = '×';
+    b.appendChild(x);
+    b.addEventListener('click', () => { remove(); changed(); });
+    list.appendChild(b);
+  };
+  if (state.q.trim()) add(`“${state.q.trim()}”`, () => { state.q = ''; $('search').value = ''; });
+  if (state.newOnly) add('New this week', () => { state.newOnly = false; });
+  for (const [key, set] of Object.entries(state.sets)) {
+    for (const v of set) {
+      const label = FACETS[key].options.find(o => o.value === v)?.label || v;
+      add(label, () => set.delete(v));
+    }
+  }
+  wrap.hidden = !list.children.length;
+}
+
+function renderStats() {
+  const ok = SOURCES.length - Object.keys(sourceErrors).length;
+  const el = $('stats');
+  el.textContent = '';
+  const strong = t => { const s = document.createElement('strong'); s.textContent = t; return s; };
+  el.append(strong(allJobs.length.toLocaleString()), ' open roles at ', strong(String(ok)), ' companies');
+}
+
+function renderNotice() {
+  const names = Object.keys(sourceErrors);
+  const el = $('notice');
+  if (!names.length || !allJobs.length) { el.hidden = true; return; }
+  const list = names.length <= 3 ? names.join(', ').replace(/, ([^,]*)$/, ' and $1') : `${names.length} companies`;
+  $('notice-text').textContent = `Couldn't load jobs from ${list} right now. Showing everything else.`;
+  el.hidden = false;
+}
+
+function updateLastFetched() {
+  const el = $('last-fetched');
+  if (!lastFetched) { el.textContent = ''; return; }
+  const sec = Math.floor((Date.now() - lastFetched) / 1000);
+  el.textContent = sec < 60 ? 'Updated just now'
+    : sec < 3600 ? `Updated ${Math.floor(sec / 60)} min ago`
+    : `Updated ${Math.floor(sec / 3600)} h ago`;
+}
+
+function setRefreshing(on) {
+  const btn = $('refresh-btn');
+  btn.disabled = on;
+  btn.classList.toggle('spinning', on);
+  if (on) $('last-fetched').textContent = 'Loading jobs…';
+}
+
+function showSkeleton() {
+  const container = $('job-container');
+  container.textContent = '';
+  $('more-wrap').hidden = true;
+  $('result-count').textContent = 'Loading jobs…';
+  const grid = document.createElement('div');
+  grid.className = 'job-grid';
+  grid.setAttribute('aria-hidden', 'true');
+  for (let i = 0; i < 6; i++) {
+    const c = document.createElement('div');
+    c.className = 'job-card skeleton';
+    c.innerHTML = '<div class="sk sk-s"></div><div class="sk sk-l"></div><div class="sk sk-m"></div><div class="sk sk-s"></div>';
+    grid.appendChild(c);
+  }
+  container.appendChild(grid);
+}
+
+function showLoadError() {
+  $('result-count').textContent = '';
+  const c = $('job-container');
+  c.textContent = '';
+  c.appendChild(stateMessage(
+    "We couldn't load any jobs",
+    'Check your internet connection and try again.',
+    { label: 'Try again', onClick: loadJobs }));
+}
+
+function stateMessage(title, text, action) {
+  const box = document.createElement('div');
+  box.className = 'state-msg';
+  const h = document.createElement('h2');
+  h.textContent = title;
+  const p = document.createElement('p');
+  p.textContent = text;
+  box.append(h, p);
+  if (action) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'btn-primary';
+    b.textContent = action.label;
+    b.addEventListener('click', action.onClick);
+    box.appendChild(b);
+  }
+  return box;
+}
+
+// ── Events ────────────────────────────────────────────────────────────────
+let searchTimer;
+$('search').addEventListener('input', e => {
+  state.q = e.target.value;
+  $('search-clear').hidden = !state.q;
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(changed, 150);
+});
+$('search-form').addEventListener('submit', e => { e.preventDefault(); clearTimeout(searchTimer); changed(); });
+$('search-clear').addEventListener('click', () => {
+  state.q = '';
+  $('search').value = '';
+  $('search').focus();
+  changed();
+});
+
+$('sort').addEventListener('change', e => { state.sort = e.target.value; changed(); });
+$('toggle-new').addEventListener('click', () => { state.newOnly = !state.newOnly; changed(); });
+$('toggle-remote').addEventListener('click', () => {
+  const s = state.sets.loc;
+  if (s.has('Remote')) s.delete('Remote'); else s.add('Remote');
+  changed();
+});
+$('clear-all').addEventListener('click', clearAll);
+$('more-btn').addEventListener('click', () => {
+  state.shown += PAGE_SIZE;
+  const y = window.scrollY;
+  render();
+  window.scrollTo(0, y);
+});
+$('refresh-btn').addEventListener('click', loadJobs);
+$('notice-close').addEventListener('click', () => { $('notice').hidden = true; });
+
+document.querySelectorAll('.dd').forEach(dd => {
+  const key = dd.dataset.facet;
+  dd.querySelector('.dd-btn').addEventListener('click', () => {
+    if (dd.querySelector('.dd-panel').hidden) openDropdown(dd); else closeDropdowns();
+  });
+  dd.querySelector('.dd-search').addEventListener('input', e => filterOptionList(key, e.target.value));
+  dd.querySelector('.dd-clear').addEventListener('click', () => { state.sets[key].clear(); changed(); });
+  dd.querySelector('.dd-done').addEventListener('click', () => { closeDropdowns(); dd.querySelector('.dd-btn').focus(); });
+});
+$('dd-backdrop').addEventListener('click', () => closeDropdowns());
+
+document.addEventListener('click', e => { if (!e.target.closest('.dd')) closeDropdowns(); });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    const open = [...document.querySelectorAll('.dd')].find(dd => !dd.querySelector('.dd-panel').hidden);
+    if (open) { closeDropdowns(); open.querySelector('.dd-btn').focus(); }
+    return;
+  }
+  // "/" jumps to search, like many sites
+  if (e.key === '/' && !e.target.closest('input, select, textarea')) {
+    e.preventDefault();
+    $('search').focus();
+  }
 });
 
 // ── Init ──────────────────────────────────────────────────────────────────
-document.getElementById('refresh-btn').addEventListener('click', loadJobs);
+readUrl();
 loadJobs();
